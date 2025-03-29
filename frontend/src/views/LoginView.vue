@@ -18,9 +18,15 @@
     </form>
   </div>
 </template>
-
+  
 <script>
+import Loader from "@/components/Loader.vue";
+import axios from "axios";
+import { useToast } from "vue-toast-notification";
+
 export default {
+  components: { Loader },
+
   data() {
     return {
       email: "",
@@ -29,7 +35,24 @@ export default {
   },
   methods: {
     handleLogin() {
-      // handle login logic
+      const $toast = useToast();
+      this.loading = true;
+
+      const body={
+        emaill: this.email,
+        password: this.password
+      }
+      try{
+        const response=axios.post("http://127.0.0.1:5000/logi", body);
+        console.log(response);
+
+      }catch(error){
+        console.log(error);
+        $toast.error("Login failed!", { position: "top-right" })
+      }
+      finally{
+        this.loading = false;
+      }
       alert(`Email: ${this.email}, Password: ${this.password}`);
     },
     handleRegister() {

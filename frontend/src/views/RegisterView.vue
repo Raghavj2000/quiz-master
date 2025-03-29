@@ -1,10 +1,10 @@
 <template>
-  <Loader v-if="loading" />
+ <Loader v-if="loading" :loading="loading" />
   <div class="register-container">
     <form class="register-form" @submit.prevent="handleRegister">
       <h2>Register</h2>
 
-      <!-- Full Name -->
+
       <div class="input-group">
         <label for="fullname">Full Name</label>
         <input 
@@ -18,7 +18,7 @@
         <p v-if="errors.fullName" class="error">{{ errors.fullName }}</p>
       </div>
 
-      <!-- Email -->
+     
       <div class="input-group">
         <label for="email">Username (Email)</label>
         <input 
@@ -32,7 +32,7 @@
         <p v-if="errors.email" class="error">{{ errors.email }}</p>
       </div>
 
-      <!-- Password -->
+  
       <div class="input-group">
         <label for="password">Password</label>
         <input 
@@ -46,7 +46,7 @@
         <p v-if="errors.password" class="error">{{ errors.password }}</p>
       </div>
 
-      <!-- Qualification -->
+     
       <div class="input-group">
         <label for="qualification">Qualification</label>
         <input 
@@ -60,7 +60,7 @@
         <p v-if="errors.qualification" class="error">{{ errors.qualification }}</p>
       </div>
 
-      <!-- Date of Birth -->
+  
       <div class="input-group">
         <label for="dob">Date of Birth</label>
         <input 
