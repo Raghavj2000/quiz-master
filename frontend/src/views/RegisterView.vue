@@ -56,7 +56,15 @@ export default {
   },
   methods: {
     handleRegister() {
-      // handle registration logic here
+      // handle registration logic 
+      const body = {
+        username: this.email,
+        password: this.password,
+        role: "student",
+        full_name: this.fullName,
+        qualification: this.qualification,
+        dob: this.dob
+      }
       alert(`Registered:
         Name: ${this.fullName}
         Email: ${this.email}
