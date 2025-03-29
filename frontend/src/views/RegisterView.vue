@@ -69,7 +69,7 @@ export default {
         dob: this.dob
         
       }
-      const response = await axios.post("https://your-api.com/register", body);
+      const response = await axios.post("https://2f75-2401-4900-8813-509b-85ab-5993-4774-f44d.ngrok-free.app  /register", body);
       console.log(response.data);
       
     }

@@ -9,7 +9,7 @@ def register():
     data = request.json
     print(data)
     if User.query.filter_by(username=data['username']).first():
-        return jsonify({"message": "User already exists"}), 400
+        return jsonify({"message": "User already exists", "statusCode": "400"}), 400
     
     new_user = User(username=data['username'], 
                     role=data['role'],
@@ -21,7 +21,7 @@ def register():
     db.session.add(new_user)
     db.session.commit()
     
-    return jsonify({"message": "User created successfully"}), 201
+    return jsonify({"message": "User created successfully", "statusCode": "200"}), 201
 
 @api.route('/logi', methods = ['POST'])
 def logi():
@@ -33,9 +33,13 @@ def logi():
     
     if user and user.check_password(data['password']):
         access_token = create_access_token(identity={"username": user.username, "role": user.role})
-        return jsonify(access_token=access_token), 200
+        return jsonify(access_token=access_token, 
+                       statusCode="200", 
+                       username = user.username,
+                       role=user.role,
+                       full_name=user.full_name), 200
     
-    return jsonify({"message": "Invalid credentials"}), 401
+    return jsonify({"message": "Invalid credentials", "statusCode": "401"}), 401
 
 @api.route('/admin', methods=['GET'])
 @jwt_required()

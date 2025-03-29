@@ -7,3 +7,4 @@ class Config:
     SQLALCHEMY_DATABASE_URI = f"sqlite:///{os.path.join(BASE_DIR, 'database.db')}"
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     JWT_VERIFY_SUB = False
+    CORS_HEADERS = "Content-Type"
