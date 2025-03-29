@@ -44,6 +44,7 @@
 </template>
 
 <script>
+import axios from "axios";
 export default {
   data() {
     return {
@@ -55,8 +56,10 @@ export default {
     };
   },
   methods: {
-    handleRegister() {
+    async handleRegister() {
       // handle registration logic 
+  
+    try{
       const body = {
         username: this.email,
         password: this.password,
@@ -64,13 +67,15 @@ export default {
         full_name: this.fullName,
         qualification: this.qualification,
         dob: this.dob
+        
       }
-      alert(`Registered:
-        Name: ${this.fullName}
-        Email: ${this.email}
-        Password: ${this.password}
-        Qualification: ${this.qualification}
-        DOB: ${this.dob}`);
+      const response = await axios.post("https://your-api.com/register", body);
+      console.log(response.data);
+      
+    }
+    catch(error){
+      console.log(error)
+    }
     },
     handleLogin() {
       // Navigate to /login using vue-router
