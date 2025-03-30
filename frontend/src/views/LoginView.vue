@@ -34,17 +34,28 @@ export default {
     };
   },
   methods: {
-    handleLogin() {
+   async handleLogin() {
       const $toast = useToast();
       this.loading = true;
 
       const body={
-        emaill: this.email,
+        username: this.email,
         password: this.password
       }
       try{
-        const response=axios.post("http://127.0.0.1:5000/logi", body);
-        console.log(response);
+        const response=await axios.post("http://127.0.0.1:5000/logi", body);
+
+        if(response?.data?.statusCode === "200"){
+          $toast.success("Login successful!", { position: "top-right" })
+          console.log(response?.data);
+          localStorage.setItem("userData", JSON.stringify(response?.data)); // Store response in localStorage
+          this.$router.push("/user-dashboard");
+        }
+        else{
+          $toast.error("Login failed!", { position: "top-right" })
+        }
+        this.email = "";
+        this.password = "";
 
       }catch(error){
         console.log(error);
@@ -53,7 +64,7 @@ export default {
       finally{
         this.loading = false;
       }
-      alert(`Email: ${this.email}, Password: ${this.password}`);
+     
     },
     handleRegister() {
       // redirect or show register form
