@@ -3,7 +3,7 @@
     <Navbar />
 
     <div v-if="loading">
-      <Loader v-if="loading" :loading="loading" />
+      <Loader :loading="loading" />
     </div>
 
     <div v-else class="table-container">
@@ -17,6 +17,7 @@
             <th>Date of Birth</th>
             <th>Qualification</th>
             <th>Role</th>
+            <th>Actions</th>
           </tr>
         </thead>
         <tbody>
@@ -27,6 +28,11 @@
             <td>{{ user.dob }}</td>
             <td>{{ user.qualification }}</td>
             <td>{{ user.role }}</td>
+            <td>
+              <BaseButton type="danger" @click="deleteUser(user.id)"
+                >Delete</BaseButton
+              >
+            </td>
           </tr>
         </tbody>
       </table>
@@ -37,6 +43,7 @@
 <script>
 import Navbar from "../components/Navbar.vue";
 import Loader from "../components/Loader.vue";
+import BaseButton from "../components/BaseButton.vue";
 import { useToast } from "vue-toast-notification";
 import axios from "axios";
 
@@ -44,6 +51,7 @@ export default {
   components: {
     Navbar,
     Loader,
+    BaseButton,
   },
   data() {
     return {
@@ -64,26 +72,42 @@ export default {
             Authorization: `Bearer ${token}`,
           },
         });
-        if (response.status !== 200) {
-          $toast.error("An error occurred while fetching users", {
-            position: "top-right",
-          });
-          this.loading = false;
-          return;
-        }
-        $toast.success("Users fetched successfully", {
-          position: "top-right",
-        });
+
+        if (response.status !== 200) throw new Error("Fetch failed");
+
         this.users = response?.data;
-        console.log(this.users);
-        this.loading = false;
+        $toast.success("Users fetched successfully", { position: "top-right" });
       } catch (error) {
         console.error("Error fetching users:", error);
-        $toast.error("An error occurred while fetching users", {
+        useToast().error("An error occurred while fetching users", {
           position: "top-right",
         });
       } finally {
         this.loading = false;
+      }
+    },
+
+    async deleteUser(userId) {
+      const $toast = useToast();
+
+      try {
+        const userData = JSON.parse(localStorage.getItem("userData"));
+        const token = userData?.access_token;
+
+        await axios.delete(`http://127.0.0.1:5000/admin/user/${userId}`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+
+        this.users = this.users.filter((user) => user.id !== userId);
+        $toast.success("User deleted successfully", { position: "top-right" });
+      } catch (error) {
+        console.error("Error deleting user:", error);
+        $toast.error("An error occurred while deleting user", {
+          position: "top-right",
+        });
+      } finally {
       }
     },
   },
