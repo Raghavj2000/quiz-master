@@ -6,22 +6,15 @@
 
       <div class="input-group">
         <label for="email">Email</label>
-        <input type="email" id="email" v-model="email" @blur="validateEmail" />
-        <p v-if="emailError" class="error-message">{{ emailError }}</p>
+        <input type="text" id="email" v-model="email" />
       </div>
 
       <div class="input-group">
         <label for="password">Password</label>
-        <input
-          type="password"
-          id="password"
-          v-model="password"
-          @blur="validatePassword"
-        />
-        <p v-if="passwordError" class="error-message">{{ passwordError }}</p>
+        <input type="password" id="password" v-model="password" />
       </div>
 
-      <button type="submit" :disabled="!isFormValid">Login</button>
+      <button type="submit">Login</button>
 
       <p class="register-link">
         Don't have an account?
@@ -42,45 +35,16 @@ export default {
     return {
       email: "",
       password: "",
-      emailError: "",
-      passwordError: "",
       loading: false,
     };
   },
   computed: {
     isFormValid() {
-      return (
-        this.email !== "" &&
-        this.password !== "" &&
-        !this.emailError &&
-        !this.passwordError
-      );
+      return this.email !== "" && this.password !== "";
     },
   },
   methods: {
-    validateEmail() {
-      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      if (!this.email) {
-        this.emailError = "Email is required.";
-      } else if (!emailRegex.test(this.email)) {
-        this.emailError = "Please enter a valid email.";
-      } else {
-        this.emailError = "";
-      }
-    },
-    validatePassword() {
-      if (!this.password) {
-        this.passwordError = "Password is required.";
-      } else if (this.password.length < 6) {
-        this.passwordError = "Password must be at least 6 characters.";
-      } else {
-        this.passwordError = "";
-      }
-    },
     async handleLogin() {
-      this.validateEmail();
-      this.validatePassword();
-
       if (!this.isFormValid) return;
 
       const $toast = useToast();
@@ -97,7 +61,11 @@ export default {
         if (response?.data?.statusCode === "200") {
           $toast.success("Login successful!", { position: "top-right" });
           localStorage.setItem("userData", JSON.stringify(response?.data));
-          this.$router.push("/user-dashboard");
+          if (response?.data?.role === "admin") {
+            this.$router.push("/admin");
+          } else {
+            this.$router.push("/user-dashboard");
+          }
         } else {
           $toast.error("Login failed!", { position: "top-right" });
         }

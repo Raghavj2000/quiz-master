@@ -23,10 +23,24 @@
 export default {
   name: "Navbar",
   data() {
+    let userData = localStorage.getItem("userData");
+    let role = "";
+    let full_name = "";
+
+    if (userData) {
+      try {
+        userData = JSON.parse(userData);
+        role = userData.role;
+        full_name = userData.full_name;
+      } catch (e) {
+        console.error("Invalid userData format:", e);
+      }
+    }
+
     return {
-      username: "",
+      username: full_name || "Admin",
       links: [
-        { name: "Home", path: "/" },
+        { name: "Home", path: role === "admin" ? "/admin" : "/user-dashboard" },
         { name: "Score", path: "/score" },
         { name: "Summary", path: "/summary" },
         { name: "Logout", path: "" },
