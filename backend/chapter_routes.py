@@ -1,6 +1,6 @@
 from flask import Blueprint, request, jsonify
 from models import db
-from models import Chapter, Subject
+from models import Chapter
 from flask_jwt_extended import jwt_required, get_jwt_identity
 
 chapter_bp = Blueprint('chapter_bp', __name__)
@@ -103,3 +103,22 @@ def search_chapters():
         return jsonify(result), 200
     except:
         return jsonify({'error': 'Error searching chapters'}), 400
+    
+@chapter_bp.route('/subjects/<int:subject_id>/chapters', methods=['GET'])
+def get_chapters_for_subject(subject_id):
+    try:
+        chapters = Chapter.query.filter_by(subject_id=subject_id).all()
+
+        result = [
+            {
+                'id': chapter.id,
+                'name': chapter.name,
+                'description': chapter.description,
+                'subject_id': chapter.subject_id
+            }
+            for chapter in chapters
+        ]
+
+        return jsonify(result), 200
+    except:
+        return jsonify({'error': 'Error retrieving chapters for subject'}), 400
