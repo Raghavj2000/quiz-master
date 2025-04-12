@@ -4,6 +4,8 @@ from flask_jwt_extended import JWTManager
 from models import db, bcrypt
 from routes import api
 from subject_routes import subject_bp
+from chapter_routes import chapter_bp
+from quiz_routes import quiz_bp
 from flask_migrate import Migrate
 from flask_cors import CORS, cross_origin
 
@@ -22,6 +24,8 @@ migrate = Migrate(app, db)
 # Register API routes
 app.register_blueprint(api)
 app.register_blueprint(subject_bp)
+app.register_blueprint(chapter_bp)
+app.register_blueprint(quiz_bp)
 
 with app.app_context():
     db.create_all()

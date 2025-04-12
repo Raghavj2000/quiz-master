@@ -1,6 +1,7 @@
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identity
 from models import db, User
+from datetime import timedelta
 
 api = Blueprint('api', __name__)
 
@@ -32,7 +33,8 @@ def logi():
     print(user)
     
     if user and user.check_password(data['password']):
-        access_token = create_access_token(identity={"username": user.username, "role": user.role})
+        access_token = create_access_token(identity={"username": user.username, "role": user.role},
+                                           expires_delta=timedelta(hours=2))
         return jsonify(access_token=access_token, 
                        statusCode="200", 
                        username = user.username,
@@ -70,3 +72,23 @@ def get_all_users():
         for u in users
     ]
     return jsonify(result), 200
+
+@api.route('/admin/user/<int:user_id>', methods=['DELETE'])
+@jwt_required()
+def delete_users(user_id):
+    
+    current_user = get_jwt_identity()
+    
+    if current_user['role'] != 'admin':
+        return jsonify({"message": "Access forbidden"}), 403
+
+    try:
+        user = User.query.get(user_id)
+        if not user:
+            return jsonify({'error': 'user not found'}), 404
+
+        db.session.delete(user)
+        db.session.commit()
+        return jsonify({'message': 'User deleted'}), 200
+    except:
+        return jsonify({'error': 'Error deleting user'}), 400

@@ -1,10 +1,20 @@
 from flask_sqlalchemy import SQLAlchemy
 from flask_bcrypt import Bcrypt
 from datetime import datetime
-
+import sqlite3
+from sqlalchemy import event
+from sqlalchemy.engine import Engine
 
 db = SQLAlchemy()
 bcrypt = Bcrypt()
+
+# ✅ This makes SQLite enforce foreign key constraints
+@event.listens_for(Engine, "connect")
+def enable_sqlite_foreign_keys(dbapi_connection, connection_record):
+    if isinstance(dbapi_connection, sqlite3.Connection):  # SQLite only
+        cursor = dbapi_connection.cursor()
+        cursor.execute("PRAGMA foreign_keys=ON")
+        cursor.close()
 
 class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -47,8 +57,9 @@ class Chapter(db.Model):
 
 class Quiz(db.Model):
     id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(120), nullable=False)
     chapter_id = db.Column(db.Integer, db.ForeignKey('chapter.id'), nullable=False)
-    date_of_quiz = db.Column(db.DateTime, default=datetime.utcnow)
+    date_of_quiz = db.Column(db.DateTime)
     time_duration = db.Column(db.Time)
     remarks = db.Column(db.Text)
 
