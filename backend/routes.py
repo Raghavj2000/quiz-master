@@ -1,5 +1,5 @@
 from flask import Blueprint, request, jsonify
-from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identity, decode_token
+from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identity
 from models import db, User
 
 api = Blueprint('api', __name__)
@@ -64,7 +64,7 @@ def get_all_users():
     if current_user['role'] != 'admin':
         return jsonify({"message": "Access forbidden"}), 403
     
-    users = User.query.all()
+    users = User.query.filter(User.role != 'admin').all()
     result = [
         {'id': u.id, 'username': u.username, 'role': u.role, 'full_name': u.full_name, 'qualification': u.qualification, 'dob': u.dob}
         for u in users
