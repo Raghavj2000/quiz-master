@@ -27,7 +27,7 @@ export default {
       username: "",
       links: [
         { name: "Home", path: "/" },
-        { name: "Quiz", path: "/quiz" },
+        { name: "Score", path: "/score" },
         { name: "Summary", path: "/summary" },
         { name: "Logout", path: "" },
       ],
