@@ -5,25 +5,25 @@ const router = createRouter({
   routes: [
     {
       path: "/",
-      redirect: "/login", // Redirect root to /login
+      redirect: "/login",
     },
     {
       path: "/login",
       name: "login",
       component: () => import("../views/LoginView.vue"),
-      meta: { requiresGuest: true }, // Only allow guests
+      meta: { requiresGuest: true },
     },
     {
       path: "/admin",
       name: "admin",
       component: () => import("../views/AdminView.vue"),
-      meta: { requiresAuth: true }, // Requires authentication
+      meta: { requiresAuth: false },
     },
     {
       path: "/register",
       name: "register",
       component: () => import("../views/RegisterView.vue"),
-      meta: { requiresGuest: true }, // Only allow guests
+      meta: { requiresGuest: true },
     },
     {
       path: "/about",
@@ -34,23 +34,20 @@ const router = createRouter({
       path: "/user-dashboard",
       name: "user-dashboard",
       component: () => import("../views/UserDashboard.vue"),
-      meta: { requiresAuth: true }, // Requires authentication
+      meta: { requiresAuth: true },
     },
   ],
 });
 
 // **Navigation Guard**
 router.beforeEach((to, from, next) => {
-  const isAuthenticated = !!localStorage.getItem("userData"); // Check if user is logged in
-
+  const isAuthenticated = !!localStorage.getItem("userData");
   if (to.meta.requiresAuth && !isAuthenticated) {
-    // Redirect to login if trying to access protected routes without authentication
     next("/login");
   } else if (to.meta.requiresGuest && isAuthenticated) {
-    // Redirect to dashboard if already logged in
     next("/user-dashboard");
   } else {
-    next(); // Proceed to the requested route
+    next();
   }
 });
 

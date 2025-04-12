@@ -10,7 +10,7 @@
     </ul>
     <div class="heading_container">
       <div class="input_container">
-        <input type="text" placeholder="Search">
+        <input type="text" placeholder="Search" />
       </div>
       <div class="Logged_in_user">
         Welcome, {{ username ? username : "Admin" }}
@@ -36,7 +36,7 @@ export default {
   mounted() {
     const userData = localStorage.getItem("userData");
     if (userData) {
-      this.username = JSON.parse(userData).username;
+      this.username = JSON.parse(userData).full_name;
     }
   },
   methods: {
