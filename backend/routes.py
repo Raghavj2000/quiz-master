@@ -53,3 +53,20 @@ def admin_only():
         return jsonify({"message": "Access forbidden"}), 403
     
     return jsonify({"message": f"Welcome Admin {current_user['username']}!"}), 200
+
+
+@api.route('/admin/users', methods=['GET'])
+@jwt_required()
+def get_all_users():
+    token = request.headers.get("Authorization").split()[1]  # Get the actual token
+    current_user = get_jwt_identity()
+    
+    if current_user['role'] != 'admin':
+        return jsonify({"message": "Access forbidden"}), 403
+    
+    users = User.query.all()
+    result = [
+        {'id': u.id, 'username': u.username, 'role': u.role, 'full_name': u.full_name, 'qualification': u.qualification, 'dob': u.dob}
+        for u in users
+    ]
+    return jsonify(result), 200

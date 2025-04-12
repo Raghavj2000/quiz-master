@@ -21,7 +21,7 @@ def create_subject():
     return jsonify({'message': 'Subject created', 'id': subject.id}), 201
 
 # Edit Subject
-@subject_bp.route('/subject/<int:subject_id>', methods=['PUT'])
+@subject_bp.route('/subject/<int:subject_id>', methods=['POST'])
 def update_subject(subject_id):
     data = request.get_json()
     subject = Subject.query.get(subject_id)
