@@ -1,39 +1,81 @@
 <template>
+ <Loader v-if="loading" :loading="loading" />
   <div class="register-container">
     <form class="register-form" @submit.prevent="handleRegister">
       <h2>Register</h2>
 
+
       <div class="input-group">
         <label for="fullname">Full Name</label>
-        <input type="text" id="fullname" v-model="fullName" required />
+        <input 
+          type="text" 
+          id="fullname" 
+          v-model="fullName" 
+          @blur="validateFullName" 
+          @focus="clearError('fullName')" 
+          required 
+        />
+        <p v-if="errors.fullName" class="error">{{ errors.fullName }}</p>
       </div>
 
+     
       <div class="input-group">
         <label for="email">Username (Email)</label>
-        <input type="email" id="email" v-model="email" required />
+        <input 
+          type="email" 
+          id="email" 
+          v-model="email" 
+          @blur="validateEmail" 
+          @focus="clearError('email')" 
+          required 
+        />
+        <p v-if="errors.email" class="error">{{ errors.email }}</p>
       </div>
 
+  
       <div class="input-group">
         <label for="password">Password</label>
-        <input type="password" id="password" v-model="password" required />
+        <input 
+          type="password" 
+          id="password" 
+          v-model="password" 
+          @blur="validatePassword" 
+          @focus="clearError('password')" 
+          required 
+        />
+        <p v-if="errors.password" class="error">{{ errors.password }}</p>
       </div>
 
+     
       <div class="input-group">
         <label for="qualification">Qualification</label>
-        <input
-          type="text"
-          id="qualification"
-          v-model="qualification"
-          required
+        <input 
+          type="text" 
+          id="qualification" 
+          v-model="qualification" 
+          @blur="validateQualification" 
+          @focus="clearError('qualification')" 
+          required 
         />
+        <p v-if="errors.qualification" class="error">{{ errors.qualification }}</p>
       </div>
 
+  
       <div class="input-group">
         <label for="dob">Date of Birth</label>
-        <input type="date" id="dob" v-model="dob" required />
+        <input 
+          type="date" 
+          id="dob" 
+          v-model="dob" 
+          @blur="validateDob" 
+          @focus="clearError('dob')" 
+          required 
+        />
+        <p v-if="errors.dob" class="error">{{ errors.dob }}</p>
       </div>
 
-      <button type="submit">Register</button>
+      <!-- Register Button -->
+      <button type="submit" :disabled="!isFormValid">Register</button>
 
       <p class="login-link">
         Already have an account?
@@ -44,41 +86,108 @@
 </template>
 
 <script>
+import Loader from "@/components/Loader.vue";
 import axios from "axios";
+import { useToast } from "vue-toast-notification";
+
 export default {
+  components: { Loader },
+
   data() {
     return {
+      loading: false,
       fullName: "",
       email: "",
       password: "",
       qualification: "",
       dob: "",
+      errors: {},
     };
   },
-  methods: {
-    async handleRegister() {
-      // handle registration logic 
-  
-    try{
-      const body = {
-        username: this.email,
-        password: this.password,
-        role: "student",
-        full_name: this.fullName,
-        qualification: this.qualification,
-        dob: this.dob
-        
-      }
-      const response = await axios.post("https://2f75-2401-4900-8813-509b-85ab-5993-4774-f44d.ngrok-free.app  /register", body);
-      console.log(response.data);
-      
-    }
-    catch(error){
-      console.log(error)
-    }
+
+  computed: {
+    isFormValid() {
+      return Object.values(this.errors).every((error) => error === "");
     },
+  },
+
+  methods: {
+    clearError(field) {
+      this.errors[field] = "";
+    },
+
+    validateFullName() {
+      this.errors.fullName = this.fullName.length >= 3 ? "" : "Full Name must be at least 3 characters.";
+    },
+
+    validateEmail() {
+      const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      this.errors.email = emailPattern.test(this.email) ? "" : "Invalid email format.";
+    },
+
+    validatePassword() {
+      this.errors.password = this.password.length >= 6 ? "" : "Password must be at least 6 characters.";
+    },
+
+    validateQualification() {
+      this.errors.qualification = this.qualification ? "" : "Qualification is required.";
+    },
+
+    validateDob() {
+      this.errors.dob = this.dob ? "" : "Date of Birth is required.";
+    },
+
+    async handleRegister() {
+      const $toast = useToast();
+
+      // Validate before submitting
+      this.validateFullName();
+      this.validateEmail();
+      this.validatePassword();
+      this.validateQualification();
+      this.validateDob();
+
+      if (!this.isFormValid) {
+        $toast.error("Please fix form errors before submitting.", { position: "top-right" });
+        return;
+      }
+
+      this.loading = true;
+      try {
+        const body = {
+          username: this.email,
+          password: this.password,
+          role: "student",
+          full_name: this.fullName,
+          qualification: this.qualification,
+          dob: this.dob,
+        };
+
+        const response = await axios.post("http://127.0.0.1:5000/register", body);
+        if (response?.data?.statusCode === "200") {
+          $toast.success("Registration successful!", { position: "top-right" });
+
+          // Reset fields
+          this.fullName = "";
+          this.email = "";
+          this.password = "";
+          this.qualification = "";
+          this.dob = "";
+          this.errors = {};
+
+          this.$router.push("/login");
+        } else {
+          $toast.error("Registration failed!", { position: "top-right" });
+        }
+      } catch (error) {
+        console.error("Registration failed:", error);
+        $toast.error("Registration failed!", { position: "top-right" });
+      } finally {
+        this.loading = false;
+      }
+    },
+
     handleLogin() {
-      // Navigate to /login using vue-router
       this.$router.push("/login");
     },
   },
@@ -143,8 +252,19 @@ button {
   transition: background 0.3s ease;
 }
 
-button:hover {
+button:disabled {
+  background: #cccccc;
+  cursor: not-allowed;
+}
+
+button:hover:not(:disabled) {
   background: #37b18e;
+}
+
+.error {
+  color: red;
+  font-size: 0.8rem;
+  margin-top: 0.3rem;
 }
 
 .login-link {
