@@ -23,14 +23,36 @@
 export default {
   name: "Navbar",
   data() {
+    let userData = localStorage.getItem("userData");
+    let role = "";
+    let full_name = "";
+
+    if (userData) {
+      try {
+        userData = JSON.parse(userData);
+        role = userData.role;
+        full_name = userData.full_name;
+      } catch (e) {
+        console.error("Invalid userData format:", e);
+      }
+    }
+
     return {
-      username: "",
-      links: [
-        { name: "Home", path: "/" },
-        { name: "Score", path: "/score" },
-        { name: "Summary", path: "/summary" },
-        { name: "Logout", path: "" },
-      ],
+      username: full_name || "Admin",
+      links: role === "admin" 
+        ? [
+            { name: "Home", path: "/admin" },
+            { name: "Summary", path: "/summary" },
+            { name: "Quiz", path: "/admin/quiz" },
+            { name: "Users", path: "/admin/users" },
+            { name: "Logout", path: "" },
+          ]
+        : [
+            { name: "Home", path: "/user-dashboard" },
+            { name: "Score", path: "/score" },
+            { name: "Summary", path: "/summary" },
+            { name: "Logout", path: "" },
+          ],
     };
   },
   mounted() {
