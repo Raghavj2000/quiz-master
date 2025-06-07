@@ -36,15 +36,26 @@ const router = createRouter({
       component: () => import("../views/UserDashboard.vue"),
       meta: { requiresAuth: true },
     },
+    {
+      path: "/admin/users",
+      name: "admin-users",
+      component: () => import("../views/AdminUsersView.vue"),
+      meta: { requiresAuth: true, requiresAdmin: true },
+    },
   ],
 });
 
 // **Navigation Guard**
 router.beforeEach((to, from, next) => {
   const isAuthenticated = !!localStorage.getItem("userData");
+  const userData = isAuthenticated ? JSON.parse(localStorage.getItem("userData")) : null;
+  const isAdmin = userData?.role === "admin";
+
   if (to.meta.requiresAuth && !isAuthenticated) {
     next("/login");
   } else if (to.meta.requiresGuest && isAuthenticated) {
+    next("/user-dashboard");
+  } else if (to.meta.requiresAdmin && !isAdmin) {
     next("/user-dashboard");
   } else {
     next();

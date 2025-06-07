@@ -2,7 +2,7 @@
   <button
     :class="['base-button', type, { disabled }]"
     :disabled="disabled"
-    @click="$emit('click')"
+    @click.stop="$emit('click')"
   >
     <slot></slot>
   </button>

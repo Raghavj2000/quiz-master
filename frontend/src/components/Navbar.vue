@@ -39,12 +39,20 @@ export default {
 
     return {
       username: full_name || "Admin",
-      links: [
-        { name: "Home", path: role === "admin" ? "/admin" : "/user-dashboard" },
-        { name: "Score", path: "/score" },
-        { name: "Summary", path: "/summary" },
-        { name: "Logout", path: "" },
-      ],
+      links: role === "admin" 
+        ? [
+            { name: "Home", path: "/admin" },
+            { name: "Summary", path: "/summary" },
+            { name: "Quiz", path: "/quiz" },
+            { name: "Users", path: "/admin/users" },
+            { name: "Logout", path: "" },
+          ]
+        : [
+            { name: "Home", path: "/user-dashboard" },
+            { name: "Score", path: "/score" },
+            { name: "Summary", path: "/summary" },
+            { name: "Logout", path: "" },
+          ],
     };
   },
   mounted() {

@@ -56,7 +56,7 @@ export default {
       };
 
       try {
-        const response = await axios.post("http://127.0.0.1:5000/logi", body);
+        const response = await axios.post("http://192.168.0.105:5000/logi", body);
 
         if (response?.data?.statusCode === "200") {
           $toast.success("Login successful!", { position: "top-right" });
