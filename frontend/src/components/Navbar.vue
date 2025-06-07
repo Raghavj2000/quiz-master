@@ -43,7 +43,7 @@ export default {
         ? [
             { name: "Home", path: "/admin" },
             { name: "Summary", path: "/summary" },
-            { name: "Quiz", path: "/quiz" },
+            { name: "Quiz", path: "/admin/quiz" },
             { name: "Users", path: "/admin/users" },
             { name: "Logout", path: "" },
           ]

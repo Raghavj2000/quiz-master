@@ -91,6 +91,35 @@
         </div>
       </form>
     </Popup>
+
+    <Popup
+      v-model="showEditChapterPopup"
+      title="Edit Chapter"
+      @confirm="handleEditChapter"
+    >
+      <form @submit.prevent="handleEditChapter" class="add-subject-form">
+        <div class="form-group">
+          <label for="editChapterName">Chapter Name</label>
+          <input
+            type="text"
+            id="editChapterName"
+            v-model="editingChapter.name"
+            required
+            placeholder="Enter chapter name"
+          />
+        </div>
+        <div class="form-group">
+          <label for="editChapterDescription">Description</label>
+          <textarea
+            id="editChapterDescription"
+            v-model="editingChapter.description"
+            required
+            placeholder="Enter chapter description"
+            rows="3"
+          ></textarea>
+        </div>
+      </form>
+    </Popup>
   </div>
 </template>
 
@@ -112,14 +141,21 @@ export default {
       subjects: [],
       showAddSubjectPopup: false,
       showAddChapterPopup: false,
+      showEditChapterPopup: false,
       newSubject: {
         name: '',
         description: ''
       },
       newChapter: {
         name: '',
-        subjectId: null,
-        description: ''
+        description: '',
+        subjectId: null
+      },
+      editingChapter: {
+        id: null,
+        name: '',
+        description: '',
+        subjectId: null
       },
       loading: true,
       token: localStorage.getItem('token') || ''
@@ -172,15 +208,35 @@ export default {
       }
     },
     editChapter(chapter) {
-      // Convert Proxy object to plain object to access properties
-      const chapterData = {
+      this.editingChapter = {
         id: chapter.id,
-        name: chapter.name
+        name: chapter.name,
+        description: chapter.description || '',
+        subjectId: chapter.subject_id
       };
-      console.log('Chapter data:', chapterData);
+      this.showEditChapterPopup = true;
     },
     async deleteChapter(chapterId) {
-      console.log('Chapter ID:', chapterId);
+    console.log(chapterId)
+      const $toast = useToast();
+      const userData = JSON.parse(localStorage.getItem("userData"));
+      const token = userData?.access_token;
+
+      try {
+        const response = await axios.delete(
+          `http://192.168.0.105:5000/chapter/${chapterId}`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`
+            }
+          }
+        );
+        this.fetchSubjects();
+        $toast.success("Chapter deleted successfully");
+      } catch (error) {
+        $toast.error("Error deleting chapter");
+        console.error('Error:', error);
+      }
     },
     openAddChapterPopup(subject) {
       this.newChapter = {
@@ -215,6 +271,35 @@ export default {
         $toast.success("Chapter added successfully");
       } catch (error) {
         $toast.error("Error adding chapter");
+        console.error('Error:', error);
+      }
+    },
+    async handleEditChapter() {
+      const $toast = useToast();
+      const userData = JSON.parse(localStorage.getItem("userData"));
+      const token = userData?.access_token;
+      
+      try {
+        const response = await axios.post(
+          `http://192.168.0.105:5000/chapter/${this.editingChapter.id}`,
+          { 
+            name: this.editingChapter.name,
+            description: this.editingChapter.description,
+            subject_id: this.editingChapter.subjectId
+          },
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        );
+        
+        this.showEditChapterPopup = false;
+        this.editingChapter = { id: null, name: '', description: '', subjectId: null };
+        this.fetchSubjects();
+        $toast.success("Chapter updated successfully");
+      } catch (error) {
+        $toast.error("Error updating chapter");
         console.error('Error:', error);
       }
     },
