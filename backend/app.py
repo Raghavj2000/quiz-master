@@ -6,6 +6,7 @@ from routes import api
 from subject_routes import subject_bp
 from chapter_routes import chapter_bp
 from quiz_routes import quiz_bp
+from question_routes import question_bp
 from flask_migrate import Migrate
 from flask_cors import CORS, cross_origin
 
@@ -26,9 +27,10 @@ app.register_blueprint(api)
 app.register_blueprint(subject_bp)
 app.register_blueprint(chapter_bp)
 app.register_blueprint(quiz_bp)
+app.register_blueprint(question_bp)
 
 with app.app_context():
     db.create_all()
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run(host="0.0.0.0", port=5000, debug=True)

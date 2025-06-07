@@ -33,6 +33,7 @@ def create_chapter():
 
 # Edit Chapter
 @chapter_bp.route('/chapter/<int:chapter_id>', methods=['POST'])
+@jwt_required()
 def update_chapter(chapter_id):
     token = request.headers.get("Authorization").split()[1]  # Get the actual token
     current_user = get_jwt_identity()
@@ -55,13 +56,13 @@ def update_chapter(chapter_id):
 
 # Delete Chapter
 @chapter_bp.route('/chapter/<int:chapter_id>', methods=['DELETE'])
+@jwt_required()
 def delete_chapter(chapter_id):
     token = request.headers.get("Authorization").split()[1]  # Get the actual token
     current_user = get_jwt_identity()
     
     if current_user['role'] != 'admin':
         return jsonify({"message": "Access forbidden"}), 403
-    data = request.get_json()
     try:
         chapter = Chapter.query.get(chapter_id)
         if not chapter:
@@ -69,8 +70,9 @@ def delete_chapter(chapter_id):
 
         db.session.delete(chapter)
         db.session.commit()
-        return jsonify({'message': 'Chapter deleted'}), 200
-    except:
+        return jsonify({'message': 'Chapter and associated quizzes deleted'}), 200
+    except Exception as e:
+        print(f"Error deleting chapter: {e}")
         return jsonify({'error': 'Error deleting chapter'}), 400
 
 

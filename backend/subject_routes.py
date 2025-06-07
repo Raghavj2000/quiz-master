@@ -29,6 +29,7 @@ def create_subject():
 
 # Edit Subject
 @subject_bp.route('/subject/<int:subject_id>', methods=['POST'])
+@jwt_required()
 def update_subject(subject_id):
     token = request.headers.get("Authorization").split()[1]  # Get the actual token
     current_user = get_jwt_identity()
@@ -48,7 +49,12 @@ def update_subject(subject_id):
 
 # Delete Subject
 @subject_bp.route('/subject/<int:subject_id>', methods=['DELETE'])
+@jwt_required()
 def delete_subject(subject_id):
+    current_user = get_jwt_identity()
+    
+    if current_user['role'] != 'admin':
+        return jsonify({"message": "Access forbidden"}), 403
     subject = Subject.query.get(subject_id)
     if not subject:
         return jsonify({'error': 'Subject not found'}), 404
@@ -59,17 +65,34 @@ def delete_subject(subject_id):
 
 
 @subject_bp.route('/subjects', methods=['GET'])
+@jwt_required()
 def get_all_subjects():
+    current_user = get_jwt_identity()
+    
+    if current_user['role'] != 'admin':
+        return jsonify({"message": "Access forbidden"}), 403
     subjects = Subject.query.all()
     result = [
-        {'id': s.id, 'name': s.name, 'description': s.description}
+        {
+            'id': s.id,
+            'name': s.name,
+            'description': s.description,
+            'chapters': [
+                {'id': c.id, 'name': c.name, 'description': c.description} for c in s.chapters
+            ]
+        }
         for s in subjects
     ]
     return jsonify(result), 200
 
 
 @subject_bp.route('/subjects/search', methods=['GET'])
+@jwt_required()
 def search_subjects():
+    current_user = get_jwt_identity()
+    
+    if current_user['role'] != 'admin':
+        return jsonify({"message": "Access forbidden"}), 403
     keyword = request.args.get('search', '')
 
     subjects = Subject.query.filter(

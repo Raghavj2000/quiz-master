@@ -1,14 +1,14 @@
 from flask import Blueprint, request, jsonify
 from models import db
 from models import Quiz
-from datetime import datetime
+from datetime import datetime, timedelta
 from flask_jwt_extended import jwt_required, get_jwt_identity
 
 
 quiz_bp = Blueprint('quiz_bp', __name__)
 
 @quiz_bp.route('/quiz', methods=['POST'])
-@jwt_required
+@jwt_required()
 def create_quiz():
     current_user = get_jwt_identity()
     
@@ -30,7 +30,7 @@ def create_quiz():
             name=name,
             chapter_id=chapter_id,
             date_of_quiz=datetime.strptime(date_of_quiz, '%Y-%m-%d').date() if date_of_quiz else None,
-            time_duration=datetime.strptime(time_duration, '%H:%M').time() if time_duration else None,
+            time_duration=(datetime.min + timedelta(minutes=time_duration)).time() if time_duration else None,
             remarks=remarks
         )
         db.session.add(quiz)
@@ -89,14 +89,18 @@ def get_all_quizzes():
                 'name': q.name,
                 'id': q.id,
                 'chapter_id': q.chapter_id,
+                'chapter_name': q.chapter.name,  # Added chapter name
                 'date_of_quiz': q.date_of_quiz,
-                'time_duration': q.time_duration,
-                'remarks': q.remarks
+                'time_duration': (q.time_duration.hour * 60 + q.time_duration.minute) if q.time_duration else None,
+                'remarks': q.remarks,
+                'questions': [
+                    {'id': qu.quiz_id, 'name': qu.question_statement} for qu in q.questions
+                ]
             } for q in quizzes
         ]
         return jsonify(result), 200
-    except:
-        return jsonify({'error': 'Error getting quizzes'}), 400
+    except Exception as e:
+        return jsonify({'error': str(e)}), 400
 
 
 @quiz_bp.route('/chapters/<int:chapter_id>/quizzes', methods=['GET'])
@@ -108,7 +112,7 @@ def get_quizzes_by_chapter(chapter_id):
                 'name': q.name,
                 'id': q.id,
                 'date_of_quiz': q.date_of_quiz,
-                'time_duration': q.time_duration,
+                'time_duration': (q.time_duration.hour * 60 + q.time_duration.minute) if q.time_duration else None,
                 'remarks': q.remarks
             } for q in quizzes
         ]
