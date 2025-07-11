@@ -163,7 +163,7 @@ export default {
           dob: this.dob,
         };
 
-        const response = await axios.post("http://192.168.0.105:5000/register", body);
+        const response = await axios.post("http://localhost:5000/register", body);
         if (response?.data?.statusCode === "200") {
           $toast.success("Registration successful!", { position: "top-right" });
 

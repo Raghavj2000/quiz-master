@@ -89,6 +89,7 @@ class Score(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     timestamp = db.Column(db.DateTime, default=datetime.utcnow)
     total_scored = db.Column(db.Integer)
+    total_questions = db.Column(db.Integer)
 
     user = db.relationship('User', backref='scores')
 

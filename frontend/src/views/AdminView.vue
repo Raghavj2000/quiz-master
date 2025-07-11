@@ -168,7 +168,7 @@ export default {
       const token = userData?.access_token;
       this.loading = true;
       try {
-        const response = await axios.get("http://192.168.0.105:5000/subjects", {
+        const response = await axios.get("http://localhost:5000/subjects", {
           headers: {
             Authorization: `Bearer ${token}`,
           },
@@ -188,7 +188,7 @@ export default {
       
       try {
         const response = await axios.post(
-          "http://192.168.0.105:5000/subject",
+          "http://localhost:5000/subject",
           this.newSubject,
           {
             headers: {
@@ -224,7 +224,7 @@ export default {
 
       try {
         const response = await axios.delete(
-          `http://192.168.0.105:5000/chapter/${chapterId}`,
+          `http://localhost:5000/chapter/${chapterId}`,
           {
             headers: {
               Authorization: `Bearer ${token}`
@@ -252,7 +252,7 @@ export default {
       
       try {
         const response = await axios.post(
-          `http://192.168.0.105:5000/chapter`,
+          `http://localhost:5000/chapter`,
           { 
             name: this.newChapter.name,
             description: this.newChapter.description,
@@ -281,7 +281,7 @@ export default {
       
       try {
         const response = await axios.post(
-          `http://192.168.0.105:5000/chapter/${this.editingChapter.id}`,
+          `http://localhost:5000/chapter/${this.editingChapter.id}`,
           { 
             name: this.editingChapter.name,
             description: this.editingChapter.description,

@@ -9,23 +9,29 @@ score_bp = Blueprint('score_bp', __name__)
 @jwt_required()
 def create_score():
     current_user = get_jwt_identity()
-    
-    if current_user['role'] != 'admin':
-        return jsonify({"message": "Access forbidden"}), 403
     data = request.get_json()
 
     quiz_id = data.get('quiz_id')
-    user_id = data.get('user_id')
     total_scored = data.get('total_scored')
+    total_questions = data.get('total_questions')
+    user_id = data.get('user_id')
+      # Optional, will use JWT if not provided
 
-    if not quiz_id or not user_id or total_scored is None:
-        return jsonify({'error': 'quiz_id, user_id, and total_scored are required'}), 400
+    if not quiz_id or total_scored is None:
+        return jsonify({'error': 'quiz_id and total_scored are required'}), 400
+
+    # Use user_id from request body if provided, otherwise use from JWT
+    final_user_id = user_id if user_id is not None else current_user.get('id')
+    
+    if not final_user_id:
+        return jsonify({'error': 'User ID not found in token'}), 400
 
     try:
         score = Score(
             quiz_id=quiz_id,
-            user_id=user_id,
+            user_id=final_user_id,
             total_scored=total_scored,
+            total_questions=total_questions,
             timestamp=datetime.utcnow()
         )
         db.session.add(score)
@@ -88,6 +94,7 @@ def get_all_scores():
                 'quiz_id': s.quiz_id,
                 'user_id': s.user_id,
                 'total_scored': s.total_scored,
+                'total_questions': s.total_questions,
                 'timestamp': s.timestamp
             } for s in scores
         ]
@@ -104,6 +111,7 @@ def get_scores_by_quiz(quiz_id):
                 'id': s.id,
                 'user_id': s.user_id,
                 'total_scored': s.total_scored,
+                'total_questions': s.total_questions,
                 'timestamp': s.timestamp
             } for s in scores
         ]
@@ -120,6 +128,26 @@ def get_scores_by_user(user_id):
                 'id': s.id,
                 'quiz_id': s.quiz_id,
                 'total_scored': s.total_scored,
+                'total_questions': s.total_questions,
+                'timestamp': s.timestamp
+            } for s in scores
+        ]
+        return jsonify(result), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 400
+
+@score_bp.route('/my-scores', methods=['GET'])
+@jwt_required()
+def get_my_scores():
+    current_user = get_jwt_identity()
+    try:
+        scores = Score.query.filter_by(user_id=current_user['id']).all()
+        result = [
+            {
+                'id': s.id,
+                'quiz_id': s.quiz_id,
+                'total_scored': s.total_scored,
+                'total_questions': s.total_questions,
                 'timestamp': s.timestamp
             } for s in scores
         ]

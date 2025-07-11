@@ -63,7 +63,7 @@
           const userData = JSON.parse(localStorage.getItem("userData"));
           const token = userData?.access_token;
   
-          const response = await axios.get("http://192.168.0.105:5000/admin/users", {
+          const response = await axios.get("http://localhost:5000/admin/users", {
             headers: {
               Authorization: `Bearer ${token}`,
             },
@@ -90,7 +90,7 @@
           const userData = JSON.parse(localStorage.getItem("userData"));
           const token = userData?.access_token;
   
-          await axios.delete(`http://192.168.0.105:5000/admin/user/${userId}`, {
+          await axios.delete(`http://localhost:5000/admin/user/${userId}`, {
             headers: {
               Authorization: `Bearer ${token}`,
             },

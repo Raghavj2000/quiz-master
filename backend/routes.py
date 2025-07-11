@@ -33,13 +33,14 @@ def logi():
     print(user)
     
     if user and user.check_password(data['password']):
-        access_token = create_access_token(identity={"username": user.username, "role": user.role},
+        access_token = create_access_token(identity={"id": user.id, "username": user.username, "role": user.role},
                                            expires_delta=timedelta(hours=2))
         return jsonify(access_token=access_token, 
                        statusCode="200", 
                        username = user.username,
                        role=user.role,
-                       full_name=user.full_name), 200
+                       full_name=user.full_name,
+                       user_id=user.id), 200
     
     return jsonify({"message": "Invalid credentials", "statusCode": "401"}), 401
 

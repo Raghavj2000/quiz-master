@@ -6,6 +6,9 @@
       <button class="new-quiz-btn" @click="showModal = true">
         <i class="fas fa-plus"></i> New Quiz
       </button>
+      <button class="add-question-btn" @click="showQuestionModal = true">
+        <i class="fas fa-plus"></i> Add Question
+      </button>
     </div>
 
     <div v-if="loading">
@@ -24,8 +27,18 @@
           <div class="questions-section">
             <h3>Questions:</h3>
             <ul>
-              <li v-for="question in quiz.questions" :key="question.id">
-                {{ question.name }}
+              <li v-for="question in quiz.questions" :key="question.id" class="question-item">
+                <div class="question-content">
+                  <span class="question-text">{{ question.name }}</span>
+                  <div class="question-actions">
+                    <button class="edit-btn" @click="editQuestion(question)">
+                      <i class="fas fa-edit"></i> Edit
+                    </button>
+                    <button class="delete-btn" @click="deleteQuestion(question.id)">
+                      <i class="fas fa-trash"></i> Delete
+                    </button>
+                  </div>
+                </div>
               </li>
             </ul>
           </div>
@@ -102,21 +115,47 @@
         </form>
       </div>
     </div>
+
+    <!-- Add Question Modal -->
+    <AddQuestionModal 
+      :show="showQuestionModal"
+      :quizzes="quiz"
+      @close="showQuestionModal = false"
+      @question-added="handleQuestionAdded"
+    />
+
+    <!-- Edit Question Modal -->
+    <EditQuestionModal 
+      :show="showEditQuestionModal"
+      :question="selectedQuestion"
+      :quizzes="quiz"
+      @close="showEditQuestionModal = false"
+      @question-updated="handleQuestionUpdated"
+    />
   </div>
 </template>
 
 <script>
   import Navbar from "../components/Navbar.vue";
+  import AddQuestionModal from "../components/AddQuestionModal.vue";
+  import EditQuestionModal from "../components/EditQuestionModal.vue";
+  import Loader from "../components/Loader.vue";
   import axios from 'axios';
   export default {
     components: {
       Navbar,
+      AddQuestionModal,
+      EditQuestionModal,
+      Loader,
     },
     data() {
       return {
         quiz:[],
         loading: true,
         showModal: false,
+        showQuestionModal: false,
+        showEditQuestionModal: false,
+        selectedQuestion: {},
         chapters: [],
         newQuiz: {
           name: '',
@@ -132,7 +171,7 @@
             const userData = JSON.parse(localStorage.getItem("userData"));
             const token = userData?.access_token;
             try{
-                const response = await axios.get("http://192.168.0.105:5000/quizzes",{
+                const response = await axios.get("http://localhost:5000/quizzes",{
                     headers:{
                         Authorization: `Bearer ${token}`
                     }
@@ -149,7 +188,7 @@
             const userData = JSON.parse(localStorage.getItem("userData"));
             const token = userData?.access_token;
             try {
-                const response = await axios.get("http://192.168.0.105:5000/chapters", {
+                const response = await axios.get("http://localhost:5000/chapters", {
                     headers: {
                         Authorization: `Bearer ${token}`
                     }
@@ -163,7 +202,7 @@
             const userData = JSON.parse(localStorage.getItem("userData"));
             const token = userData?.access_token;
             try {
-                await axios.post("http://192.168.0.105:5000/quiz", this.newQuiz, {
+                await axios.post("http://localhost:5000/quiz", this.newQuiz, {
                     headers: {
                         Authorization: `Bearer ${token}`
                     }
@@ -181,6 +220,33 @@
             } catch (error) {
                 console.error("Error creating quiz:", error);
             }
+        },
+        handleQuestionAdded() {
+            this.fetchQuiz(); // Refresh the quiz list to show new questions
+        },
+        editQuestion(question) {
+            this.selectedQuestion = question;
+            this.showEditQuestionModal = true;
+        },
+        async deleteQuestion(questionId) {
+            if (confirm('Are you sure you want to delete this question?')) {
+                const userData = JSON.parse(localStorage.getItem("userData"));
+                const token = userData?.access_token;
+                try {
+                    await axios.delete(`http://localhost:5000/question/${questionId}`, {
+                        headers: {
+                            Authorization: `Bearer ${token}`
+                        }
+                    });
+                    this.fetchQuiz(); // Refresh the quiz list
+                } catch (error) {
+                    console.error("Error deleting question:", error);
+                    alert("Error deleting question. Please try again.");
+                }
+            }
+        },
+        handleQuestionUpdated() {
+            this.fetchQuiz(); // Refresh the quiz list to show updated questions
         }
     },
     mounted() {
@@ -199,9 +265,11 @@
   margin-bottom: 2rem;
   display: flex;
   justify-content: flex-end;
+  gap: 1rem;
 }
 
-.new-quiz-btn {
+.new-quiz-btn,
+.add-question-btn {
   background: #4CAF50;
   color: white;
   border: none;
@@ -215,8 +283,17 @@
   transition: background-color 0.2s;
 }
 
-.new-quiz-btn:hover {
+.new-quiz-btn:hover,
+.add-question-btn:hover {
   background: #45a049;
+}
+
+.add-question-btn {
+  background: #007bff;
+}
+
+.add-question-btn:hover {
+  background: #0056b3;
 }
 
 .quiz-container {
@@ -291,6 +368,61 @@
 
 .questions-section li:last-child {
   border-bottom: none;
+}
+
+.question-item {
+  padding: 0.75rem 0;
+  border-bottom: 1px solid #e9ecef;
+}
+
+.question-content {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+}
+
+.question-text {
+  flex: 1;
+  font-size: 0.9rem;
+  line-height: 1.4;
+}
+
+.question-actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
+
+.edit-btn,
+.delete-btn {
+  padding: 0.25rem 0.5rem;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.8rem;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  transition: background-color 0.2s;
+}
+
+.edit-btn {
+  background: #ffc107;
+  color: #212529;
+}
+
+.edit-btn:hover {
+  background: #e0a800;
+}
+
+.delete-btn {
+  background: #dc3545;
+  color: white;
+}
+
+.delete-btn:hover {
+  background: #c82333;
 }
 
 .quiz-meta {

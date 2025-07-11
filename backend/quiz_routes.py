@@ -7,6 +7,18 @@ from flask_jwt_extended import jwt_required, get_jwt_identity
 
 quiz_bp = Blueprint('quiz_bp', __name__)
 
+@quiz_bp.route('/test', methods=['GET'])
+def test():
+    return jsonify({'message': 'Quiz API is working!'}), 200
+
+@quiz_bp.route('/quiz-count', methods=['GET'])
+def quiz_count():
+    try:
+        count = Quiz.query.count()
+        return jsonify({'quiz_count': count}), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 400
+
 @quiz_bp.route('/quiz', methods=['POST'])
 @jwt_required()
 def create_quiz():
@@ -83,23 +95,38 @@ def delete_quiz(quiz_id):
 @quiz_bp.route('/quizzes', methods=['GET'])
 def get_all_quizzes():
     try:
+        print("Fetching all quizzes...")  # Debug log
         quizzes = Quiz.query.all()
+        print(f"Found {len(quizzes)} quizzes")  # Debug log
+        
         result = [
             {
                 'name': q.name,
                 'id': q.id,
                 'chapter_id': q.chapter_id,
-                'chapter_name': q.chapter.name,  # Added chapter name
-                'date_of_quiz': q.date_of_quiz,
+                'chapter_name': q.chapter.name if q.chapter else 'Unknown Chapter',  # Added null check
+                'date_of_quiz': q.date_of_quiz.isoformat() if q.date_of_quiz else None,
                 'time_duration': (q.time_duration.hour * 60 + q.time_duration.minute) if q.time_duration else None,
                 'remarks': q.remarks,
                 'questions': [
-                    {'id': qu.quiz_id, 'name': qu.question_statement} for qu in q.questions
+                    {
+                        'id': qu.id,
+                        'name': qu.question_statement,
+                        'question_statement': qu.question_statement,
+                        'quiz_id': qu.quiz_id,
+                        'option1': qu.option1,
+                        'option2': qu.option2,
+                        'option3': qu.option3,
+                        'option4': qu.option4,
+                        'correct_option': qu.correct_option
+                    } for qu in q.questions
                 ]
             } for q in quizzes
         ]
+        print("Returning quiz data:", result)  # Debug log
         return jsonify(result), 200
     except Exception as e:
+        print(f"Error in get_all_quizzes: {str(e)}")  # Debug log
         return jsonify({'error': str(e)}), 400
 
 
