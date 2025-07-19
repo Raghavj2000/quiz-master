@@ -53,6 +53,18 @@ const router = createRouter({
       name: "quiz",
       component: () => import("../views/QuizView.vue"),
       meta: { requiresAuth: true },
+    },
+    {
+      path: "/admin-summary",
+      name: "admin-summary",
+      component: () => import("../views/AdminSummary.vue"),
+      meta: { requiresAuth: true, requiresAdmin: true },
+    },
+    {
+      path: "/summary",
+      name: "summary",
+      component: () => import("../views/UserSummary.vue"),
+      meta: { requiresAuth: true },
     }
   ],
 });
