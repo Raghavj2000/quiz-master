@@ -42,7 +42,7 @@ export default {
       links: role === "admin" 
         ? [
             { name: "Home", path: "/admin" },
-            { name: "Summary", path: "/summary" },
+            { name: "Summary", path: "/admin-summary" },
             { name: "Quiz", path: "/admin/quiz" },
             { name: "Users", path: "/admin/users" },
             { name: "Logout", path: "" },
