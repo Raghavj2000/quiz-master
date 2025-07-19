@@ -119,7 +119,10 @@ def get_subject_top_scores():
                     full_name,
                     top_score,
                     total_questions,
-                    percentage
+                    CASE 
+                        WHEN total_questions > 0 THEN ROUND((top_score * 100.0) / total_questions, 2)
+                        ELSE 0
+                    END as percentage
                 FROM (
                     SELECT 
                         s.id as subject_id,
@@ -129,13 +132,13 @@ def get_subject_top_scores():
                         u.full_name,
                         sc.total_scored as top_score,
                         sc.total_questions,
-                        ROUND(CAST(sc.total_scored * 100.0 / sc.total_questions AS FLOAT), 2) as percentage,
-                        ROW_NUMBER() OVER (PARTITION BY s.id ORDER BY sc.total_scored DESC, sc.total_scored * 100.0 / sc.total_questions DESC) as rn
+                        ROW_NUMBER() OVER (PARTITION BY s.id ORDER BY sc.total_scored DESC, (sc.total_scored * 100.0 / sc.total_questions) DESC) as rn
                     FROM subject s
                     JOIN chapter c ON s.id = c.subject_id
                     JOIN quiz q ON c.id = q.chapter_id
                     JOIN score sc ON q.id = sc.quiz_id
                     JOIN user u ON sc.user_id = u.id
+                    WHERE sc.total_questions > 0
                 ) ranked
                 WHERE rn = 1
                 ORDER BY subject_name
