@@ -14,7 +14,7 @@
                     @click="activeTab = 'quizzes'" 
                     :class="['tab-button', { active: activeTab === 'quizzes' }]"
                 >
-                    Available Quizzes
+                    Available Quiz
                 </button>
                 <button 
                     @click="activeTab = 'history'" 
@@ -35,9 +35,9 @@
                 <div class="error-message">
                     <h3>Oops! Something went wrong</h3>
                     <p>{{ error }}</p>
-                    <BaseButton @click="fetchQuizzes" type="primary">
+                    <button @click="fetchQuizzes" class="primary-btn">
                         Try Again
-                    </BaseButton>
+                    </button>
                 </div>
             </div>
 
@@ -81,13 +81,13 @@
                     </div>
                     
                     <div class="quiz-actions">
-                        <BaseButton 
+                        <button 
                             @click="startQuiz(quiz)" 
-                            type="primary"
+                            class="primary-btn"
                             :disabled="quiz.questions.length === 0"
                         >
                             {{ quiz.questions.length === 0 ? 'No Questions Available' : 'Start Quiz' }}
-                        </BaseButton>
+                        </button>
                     </div>
                 </div>
             </div>
@@ -106,7 +106,7 @@
                         class="score-card"
                     >
                         <div class="score-header">
-                            <h3>{{ score.quiz_name }}</h3>
+                            <h3>{{ score.quiz_name || `Quiz ${score.quiz_id}` || 'Unknown Quiz' }}</h3>
                             <span class="score-badge" :class="getScoreClass(score.percentage)">
                                 {{ score.percentage }}%
                             </span>
@@ -115,7 +115,7 @@
                         <div class="score-details">
                             <div class="detail-item">
                                 <span class="label">Score:</span>
-                                <span class="value">{{ score.total_scored }}/{{ score.total_questions }}</span>
+                                <span class="value">{{ score.total_scored }}/{{ score.total_questions || '?' }}</span>
                             </div>
                             
                             <div class="detail-item">
@@ -128,8 +128,8 @@
                             <div class="progress-bar">
                                 <div 
                                     class="progress-fill" 
-                                    :style="{ width: `${score.percentage}%` }"
-                                    :class="getScoreClass(score.percentage)"
+                                    :style="{ width: `${score.percentage || 0}%` }"
+                                    :class="getScoreClass(score.percentage || 0)"
                                 ></div>
                             </div>
                         </div>
@@ -144,7 +144,6 @@
 import { ref, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import Navbar from '@/components/Navbar.vue';
-import BaseButton from '@/components/BaseButton.vue';
 
 const router = useRouter();
 const quizzes = ref([]);
@@ -211,7 +210,33 @@ const fetchMyScores = async () => {
         }
 
         const data = await response.json();
-        myScores.value = data;
+        console.log('Scores data received:', data);
+        console.log('First score details:', data[0] ? {
+            id: data[0].id,
+            quiz_id: data[0].quiz_id,
+            total_scored: data[0].total_scored,
+            total_questions: data[0].total_questions,
+            percentage: data[0].percentage,
+            timestamp: data[0].timestamp
+        } : 'No scores');
+        
+        // Map scores with additional data from quizzes
+        if (data.length > 0) {
+            console.log('Mapping scores with quiz data...');
+            const scoresWithData = data.map((score) => {
+                // Find the quiz in our existing quizzes array
+                const quiz = quizzes.value.find(q => q.id === score.quiz_id);
+                return {
+                    ...score,
+                    quiz_name: quiz ? quiz.name : `Quiz ${score.quiz_id}`,
+                    total_questions: score.total_questions || (quiz ? quiz.questions.length : null)
+                };
+            });
+            
+            myScores.value = scoresWithData;
+        } else {
+            myScores.value = data;
+        }
     } catch (err) {
         console.error('Error fetching scores:', err);
         // Don't set error for scores, just log it
@@ -273,7 +298,7 @@ const getScoreClass = (percentage) => {
     return 'poor';
 };
 
-onMounted(() => {
+onMounted(async () => {
     console.log('UserDashboard mounted, fetching quizzes...');
     
     // Test if backend is reachable
@@ -288,8 +313,9 @@ onMounted(() => {
         .then(data => console.log('Quiz count:', data))
         .catch(err => console.error('Quiz count failed:', err));
     
-    fetchQuizzes();
-    fetchMyScores();
+    // Fetch quizzes first, then scores
+    await fetchQuizzes();
+    await fetchMyScores();
 });
 </script>
 
@@ -614,6 +640,34 @@ onMounted(() => {
 
 .progress-fill.poor {
     background: #e74c3c;
+}
+
+/* Button Styles */
+.primary-btn {
+    padding: 0.75rem 1.5rem;
+    border: none;
+    border-radius: 8px;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    text-decoration: none;
+    display: inline-block;
+    text-align: center;
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    color: white;
+}
+
+.primary-btn:hover:not(:disabled) {
+    background: linear-gradient(135deg, #5a6fd8, #6a4190);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+}
+
+.primary-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
 }
 
 /* Responsive Design */

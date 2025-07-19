@@ -49,7 +49,7 @@ export default {
           ]
         : [
             { name: "Home", path: "/user-dashboard" },
-            { name: "Score", path: "/score" },
+            // { name: "Score", path: "/score" },
             { name: "Summary", path: "/summary" },
             { name: "Logout", path: "" },
           ],
