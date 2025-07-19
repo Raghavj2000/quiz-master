@@ -108,40 +108,8 @@ def get_subject_top_scores():
         return jsonify({"message": "Access forbidden"}), 403
     
     try:
-        # Query to get top scores for each subject
-        # Join all necessary tables and get the highest score per subject
-        top_scores = db.session.query(
-            Subject.id.label('subject_id'),
-            Subject.name.label('subject_name'),
-            User.id.label('user_id'),
-            User.username.label('username'),
-            User.full_name.label('full_name'),
-            func.max(Score.total_scored).label('top_score'),
-            func.max(Score.total_questions).label('total_questions'),
-            func.round(func.cast(func.max(Score.total_scored) * 100.0 / func.max(Score.total_questions), db.Float), 2).label('percentage')
-        ).join(
-            Chapter, Subject.id == Chapter.subject_id
-        ).join(
-            Quiz, Chapter.id == Quiz.chapter_id
-        ).join(
-            Score, Quiz.id == Score.quiz_id
-        ).join(
-            User, Score.user_id == User.id
-        ).group_by(
-            Subject.id, Subject.name, User.id, User.username, User.full_name
-        ).subquery()
-        
-        # Get the highest score for each subject
-        final_result = db.session.query(
-            top_scores.c.subject_id,
-            top_scores.c.subject_name,
-            top_scores.c.user_id,
-            top_scores.c.username,
-            top_scores.c.full_name,
-            top_scores.c.top_score,
-            top_scores.c.total_questions,
-            top_scores.c.percentage
-        ).from_statement(
+        # Query to get top scores for each subject using raw SQL for better accuracy
+        final_result = db.session.execute(
             db.text("""
                 SELECT 
                     subject_id,
@@ -172,7 +140,7 @@ def get_subject_top_scores():
                 WHERE rn = 1
                 ORDER BY subject_name
             """)
-        ).all()
+        ).fetchall()
         
         # Format the results
         result = [
