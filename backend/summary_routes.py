@@ -50,4 +50,45 @@ def get_user_subject_quiz_summary(user_id):
         }), 200
         
     except Exception as e:
-        return jsonify({'error': f'Error retrieving summary: {str(e)}'}), 400 
+        return jsonify({'error': f'Error retrieving summary: {str(e)}'}), 400
+
+@summary_bp.route('/summary/user/<int:user_id>/monthly-quizzes', methods=['GET'])
+@jwt_required()
+def get_user_monthly_quiz_summary(user_id):
+    """
+    Get the number of quizzes taken for each month by a specific user
+    Returns: List of months with quiz counts
+    """
+    current_user = get_jwt_identity()
+    
+    try:
+        # Query to get monthly quiz counts for the user
+        # Extract year and month from timestamp and count quizzes
+        monthly_summary = db.session.query(
+            func.strftime('%Y-%m', Score.timestamp).label('month'),
+            func.count(Score.id).label('quiz_count')
+        ).filter(
+            Score.user_id == user_id
+        ).group_by(
+            func.strftime('%Y-%m', Score.timestamp)
+        ).order_by(
+            func.strftime('%Y-%m', Score.timestamp).desc()
+        ).all()
+        
+        # Format the results
+        result = [
+            {
+                'month': row.month,
+                'quiz_count': row.quiz_count
+            }
+            for row in monthly_summary
+        ]
+        
+        return jsonify({
+            'user_id': user_id,
+            'monthly_summary': result,
+            'total_months_with_quizzes': len(result)
+        }), 200
+        
+    except Exception as e:
+        return jsonify({'error': f'Error retrieving monthly summary: {str(e)}'}), 400 
