@@ -62,18 +62,19 @@ def get_user_monthly_quiz_summary(user_id):
     current_user = get_jwt_identity()
     
     try:
-        # Query to get monthly quiz counts for the user
-        # Extract year and month from timestamp and count quizzes
-        monthly_summary = db.session.query(
-            func.strftime('%Y-%m', Score.timestamp).label('month'),
-            func.count(Score.id).label('quiz_count')
-        ).filter(
-            Score.user_id == user_id
-        ).group_by(
-            func.strftime('%Y-%m', Score.timestamp)
-        ).order_by(
-            func.strftime('%Y-%m', Score.timestamp).desc()
-        ).all()
+        # Query to get monthly quiz counts for the user using raw SQL for better date handling
+        monthly_summary = db.session.execute(
+            db.text("""
+                SELECT 
+                    strftime('%Y-%m', timestamp) as month,
+                    COUNT(*) as quiz_count
+                FROM score 
+                WHERE user_id = :user_id
+                GROUP BY strftime('%Y-%m', timestamp)
+                ORDER BY month DESC
+            """),
+            {'user_id': user_id}
+        ).fetchall()
         
         # Format the results
         result = [
