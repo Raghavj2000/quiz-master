@@ -36,17 +36,16 @@
                     </div>
                     
                     <div v-if="!quizAlreadyTaken" class="start-actions">
-                        <BaseButton 
+                        <button 
                             @click="startQuiz" 
-                            type="primary" 
-                            class="start-btn"
+                            class="start-btn primary-btn"
                             :disabled="checkingScore"
                         >
                             {{ checkingScore ? 'Checking...' : 'Start Quiz' }}
-                        </BaseButton>
-                        <BaseButton @click="goBack" type="secondary" class="back-btn">
+                        </button>
+                        <button @click="goBack" class="back-btn secondary-btn">
                             Back to Dashboard
-                        </BaseButton>
+                        </button>
                     </div>
                     
                     <!-- Quiz Already Taken Message -->
@@ -54,9 +53,9 @@
                         <div class="message-card">
                             <h3>Quiz Already Completed</h3>
                             <p>You have already taken this quiz and cannot take it again.</p>
-                            <BaseButton @click="goBack" type="primary">
+                            <button @click="goBack" class="primary-btn">
                                 Back to Dashboard
-                            </BaseButton>
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -108,13 +107,13 @@
                 </div>
 
                 <div class="quiz-navigation">
-                    <BaseButton 
+                    <button 
                         @click="previousQuestion" 
-                        type="secondary"
+                        class="secondary-btn"
                         :disabled="currentQuestionIndex === 0"
                     >
                         Previous
-                    </BaseButton>
+                    </button>
                     
                     <div class="question-indicators">
                         <span 
@@ -131,22 +130,21 @@
                         </span>
                     </div>
                     
-                    <BaseButton 
+                    <button 
                         v-if="currentQuestionIndex < currentQuiz.questions.length - 1"
                         @click="nextQuestion" 
-                        type="primary"
+                        class="primary-btn"
                     >
                         Next
-                    </BaseButton>
+                    </button>
                     
-                    <BaseButton 
+                    <button 
                         v-else
                         @click="submitQuiz" 
-                        type="primary"
-                        class="submit-btn"
+                        class="primary-btn submit-btn"
                     >
                         Submit Quiz
-                    </BaseButton>
+                    </button>
                 </div>
             </div>
 
@@ -176,12 +174,12 @@
                     </div>
                     
                     <div class="results-actions">
-                        <BaseButton @click="goBack" type="primary">
+                        <button @click="goBack" class="primary-btn">
                             Back to Dashboard
-                        </BaseButton>
-                        <BaseButton @click="reviewAnswers" type="secondary">
+                        </button>
+                        <button @click="reviewAnswers" class="secondary-btn">
                             Review Answers
-                        </BaseButton>
+                        </button>
                     </div>
                 </div>
             </div>
@@ -193,7 +191,6 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import Navbar from '@/components/Navbar.vue';
-import BaseButton from '@/components/BaseButton.vue';
 
 const route = useRoute();
 const router = useRouter();
@@ -915,6 +912,56 @@ onUnmounted(() => {
     display: flex;
     gap: 1rem;
     justify-content: center;
+}
+
+/* Button Styles */
+.primary-btn, .secondary-btn {
+    padding: 0.75rem 1.5rem;
+    border: none;
+    border-radius: 8px;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    text-decoration: none;
+    display: inline-block;
+    text-align: center;
+}
+
+.primary-btn {
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    color: white;
+}
+
+.primary-btn:hover:not(:disabled) {
+    background: linear-gradient(135deg, #5a6fd8, #6a4190);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+}
+
+.primary-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+}
+
+.secondary-btn {
+    background: rgba(255, 255, 255, 0.9);
+    color: #667eea;
+    border: 2px solid #667eea;
+}
+
+.secondary-btn:hover:not(:disabled) {
+    background: #667eea;
+    color: white;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+}
+
+.secondary-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
 }
 
 /* Responsive */
