@@ -12,6 +12,7 @@ from summary_routes import summary_bp
 from scheduled_jobs_routes import scheduled_jobs_bp
 from flask_migrate import Migrate
 from flask_cors import CORS, cross_origin
+from celery_config import celery_app
 
 app = Flask(__name__)
 cors = CORS(app) # allow CORS for all domains on all routes.
@@ -24,6 +25,17 @@ bcrypt.init_app(app)
 jwt.init_app(app)
 
 migrate = Migrate(app, db)
+
+# Configure Celery
+celery_app.conf.update(broker_url=app.config.get('CELERY_BROKER_URL', 'redis://localhost:6379/0'))
+
+# Make Celery work with Flask context
+class ContextTask(celery_app.Task):
+    def __call__(self, *args, **kwargs):
+        with app.app_context():
+            return self.run(*args, **kwargs)
+
+celery_app.Task = ContextTask
 
 # Register API routes
 app.register_blueprint(api)

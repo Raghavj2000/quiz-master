@@ -431,7 +431,8 @@ const saveResults = async () => {
         
         const requestBody = {
             quiz_id: currentQuiz.value.id,
-            total_scored: score.value
+            total_scored: score.value,
+            total_questions: currentQuiz.value.questions.length
         };
         
         // Add user_id if we have it

@@ -1,14 +1,15 @@
-from flask import Blueprint, request, jsonify, render_template_string
-from models import db, Score, Quiz, Chapter, Subject, User
-from flask_jwt_extended import jwt_required, get_jwt_identity
-from sqlalchemy import func, desc
-from datetime import datetime, timedelta
+from celery_config import celery_app
+from models import db, User
+from datetime import datetime
+import uuid
+import os
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
-import os
-
-scheduled_jobs_bp = Blueprint('scheduled_jobs_bp', __name__)
+from flask import render_template_string
+from sqlalchemy import func, desc
+from datetime import timedelta
+from app import app  # Import the Flask app
 
 # Email configuration
 SMTP_SERVER = os.getenv('SMTP_SERVER', 'smtp.gmail.com')
@@ -70,6 +71,8 @@ def generate_monthly_report_html(user_id, month_year):
         return None
     
     # Get monthly quiz data
+    from models import Score, Quiz, Chapter, Subject
+    
     monthly_scores = db.session.query(
         Score.id,
         Score.total_scored,
@@ -265,247 +268,215 @@ def generate_monthly_report_html(user_id, month_year):
                                 quiz_rankings=quiz_rankings,
                                 datetime=datetime)
 
-@scheduled_jobs_bp.route('/scheduled/generate-monthly-report', methods=['POST'])
-@jwt_required()
-def generate_monthly_report():
-    """
-    Generate and send monthly report for a user
-    """
-    current_user = get_jwt_identity()
-    
-    # Check if current user is admin
-    if current_user['role'] != 'admin':
-        return jsonify({"message": "Access forbidden"}), 403
-    
-    data = request.get_json()
-    user_id = data.get('user_id')
-    month_year = data.get('month_year')  # Format: "2024-01"
-    email = data.get('email')
-    
-    if not user_id or not month_year or not email:
-        return jsonify({'error': 'user_id, month_year, and email are required'}), 400
-    
-    try:
-        # Generate HTML report
-        html_content = generate_monthly_report_html(user_id, month_year)
-        
-        if not html_content:
-            return jsonify({'error': 'Failed to generate report or user not found'}), 400
-        
-        # Send email
-        subject = f"Monthly Quiz Report - {month_year}"
-        email_sent = send_email(email, subject, html_content)
-        
-        if email_sent:
-            return jsonify({
-                'message': 'Monthly report generated and sent successfully',
-                'user_id': user_id,
-                'month_year': month_year,
-                'email': email
-            }), 200
-        else:
-            # For now, return the HTML content so you can see the report
-            return jsonify({
-                'message': 'Report generated but email sending failed. Here is the HTML content:',
-                'user_id': user_id,
-                'month_year': month_year,
-                'email': email,
-                'html_content': html_content
-            }), 200
+@celery_app.task(bind=True)
+def generate_user_report(self, user_id, month_year):
+    """Generate monthly report for a specific user"""
+    with app.app_context():
+        try:
+            print(f"Generating report for user {user_id} for {month_year}")
             
-    except Exception as e:
-        return jsonify({'error': f'Error generating report: {str(e)}'}), 400
-
-@scheduled_jobs_bp.route('/scheduled/generate-all-monthly-reports', methods=['POST'])
-@jwt_required()
-def generate_all_monthly_reports():
-    """
-    Generate and send monthly reports for all users using Celery
-    """
-    current_user = get_jwt_identity()
-    
-    # Check if current user is admin
-    if current_user.get('role') != 'admin':
-        return jsonify({"message": "Access forbidden"}), 403
-    
-    data = request.get_json()
-    month_year = data.get('month_year')  # Format: "2024-12"
-    
-    if not month_year:
-        return jsonify({'error': 'month_year is required'}), 400
-    
-    try:
-        # Import locally to avoid circular import
-        from celery_tasks import process_all_reports
-        
-        # Start Celery task for processing all reports
-        result = process_all_reports.delay(month_year)
-        
-        return jsonify({
-            'message': 'Report generation started for all users',
-            'task_id': result.id,
-            'month_year': month_year,
-            'status': 'PENDING'
-        }), 202
-        
-    except Exception as e:
-        return jsonify({'error': f'Error starting report generation: {str(e)}'}), 400
-
-@scheduled_jobs_bp.route('/scheduled/test-celery', methods=['GET'])
-def test_celery():
-    """Test endpoint to verify Celery is working"""
-    try:
-        # Import locally to avoid circular import
-        from celery_tasks import process_all_reports
-        
-        result = process_all_reports.delay("2024-12")
-        return jsonify({
-            "message": "Celery task started successfully",
-            "task_id": result.id
-        }), 200
-    except Exception as e:
-        return jsonify({
-            "error": f"Celery test failed: {str(e)}"
-        }), 500
-
-@scheduled_jobs_bp.route('/scheduled/test-single-user', methods=['POST'])
-@jwt_required()
-def test_single_user_report():
-    """Test generating report for a single user"""
-    current_user = get_jwt_identity()
-    
-    # Check if current user is admin
-    if current_user.get('role') != 'admin':
-        return jsonify({"message": "Access forbidden"}), 403
-    
-    data = request.get_json()
-    user_id = data.get('user_id')
-    month_year = data.get('month_year', '2024-12')
-    
-    if not user_id:
-        return jsonify({'error': 'user_id is required'}), 400
-    
-    try:
-        from celery_tasks import generate_user_report, send_report_email
-        
-        # Generate report
-        report_result = generate_user_report.delay(user_id, month_year)
-        
-        return jsonify({
-            'message': 'Single user report generation started',
-            'task_id': report_result.id,
-            'user_id': user_id,
-            'month_year': month_year
-        }), 202
-        
-    except Exception as e:
-        return jsonify({'error': f'Error starting report generation: {str(e)}'}), 400
-
-@scheduled_jobs_bp.route('/scheduled/generate-user-report', methods=['POST'])
-@jwt_required()
-def generate_user_report_endpoint():
-    """Generate and send report for a single user"""
-    current_user = get_jwt_identity()
-    
-    # Check if current user is admin
-    if current_user.get('role') != 'admin':
-        return jsonify({"message": "Access forbidden"}), 403
-    
-    data = request.get_json()
-    user_id = data.get('user_id')
-    month_year = data.get('month_year', '2024-12')
-    
-    if not user_id:
-        return jsonify({'error': 'user_id is required'}), 400
-    
-    try:
-        from celery_tasks import generate_and_send_user_report
-        
-        # Start the combined task
-        result = generate_and_send_user_report.delay(user_id, month_year)
-        
-        return jsonify({
-            'message': 'User report generation and email sending started',
-            'task_id': result.id,
-            'user_id': user_id,
-            'month_year': month_year,
-            'status': 'PENDING'
-        }), 202
-        
-    except Exception as e:
-        return jsonify({'error': f'Error starting report generation: {str(e)}'}), 400
-
-@scheduled_jobs_bp.route('/scheduled/task-status/<task_id>', methods=['GET'])
-@jwt_required()
-def get_task_status(task_id):
-    """Get the status of a Celery task"""
-    current_user = get_jwt_identity()
-    
-    # Check if current user is admin
-    if current_user.get('role') != 'admin':
-        return jsonify({"message": "Access forbidden"}), 403
-    
-    try:
-        from celery_tasks import celery_app
-        
-        task = celery_app.AsyncResult(task_id)
-        
-        if task.state == 'PENDING':
-            response = {
-                'state': task.state,
-                'current': 0,
-                'total': 1,
-                'status': 'Task is pending...'
+            # Generate HTML report
+            html_content = generate_monthly_report_html(user_id, month_year)
+            
+            if not html_content:
+                print(f"No report content generated for user {user_id}")
+                return f"No report generated for user {user_id}"
+            
+            print(f"Report generated successfully for user {user_id}")
+            return {
+                'user_id': user_id,
+                'month_year': month_year,
+                'html_content': html_content,
+                'status': 'generated'
             }
-        elif task.state != 'FAILURE':
-            response = {
-                'state': task.state,
-                'current': task.info.get('current', 0),
-                'total': task.info.get('total', 1),
-                'status': task.info.get('status', ''),
-                'result': task.result
-            }
-        else:
-            # Something went wrong in the background job
-            response = {
-                'state': task.state,
-                'current': 1,
-                'total': 1,
-                'status': str(task.info),  # This is the exception raised
-            }
-        
-        return jsonify(response)
-        
-    except Exception as e:
-        return jsonify({'error': f'Error getting task status: {str(e)}'}), 400
+        except Exception as e:
+            print(f"Error generating report for user {user_id}: {str(e)}")
+            raise
 
-@scheduled_jobs_bp.route('/scheduled/report-summary', methods=['GET'])
-@jwt_required()
-def get_report_summary():
-    """Get summary of recent report generation tasks"""
-    current_user = get_jwt_identity()
-    
-    # Check if current user is admin
-    if current_user.get('role') != 'admin':
-        return jsonify({"message": "Access forbidden"}), 403
-    
-    try:
-        from celery_tasks import celery_app
-        
-        # Get recent tasks (last 10)
-        inspector = celery_app.control.inspect()
-        active_tasks = inspector.active() or {}
-        reserved_tasks = inspector.reserved() or {}
-        
-        # Get task history from Redis (basic implementation)
-        # In production, you might want to store task results in a database
-        
-        return jsonify({
-            'message': 'Report generation summary',
-            'active_tasks': len([task for tasks in active_tasks.values() for task in tasks]),
-            'reserved_tasks': len([task for tasks in reserved_tasks.values() for task in tasks]),
-            'note': 'For detailed task history, check individual task status'
-        })
-        
-    except Exception as e:
-        return jsonify({'error': f'Error getting summary: {str(e)}'}), 400 
+@celery_app.task(bind=True)
+def send_report_email(self, user_id, month_year, html_content):
+    """Send email with report for a specific user"""
+    with app.app_context():
+        try:
+            print(f"Sending email for user {user_id} for {month_year}")
+            
+            # Get user email
+            user = User.query.get(user_id)
+            if not user:
+                print(f"User {user_id} not found")
+                return f"User {user_id} not found"
+            
+            email = user.username  # Assuming username is email
+            subject = f"Monthly Quiz Report - {month_year}"
+            
+            # Send email
+            email_sent = send_email(email, subject, html_content)
+            
+            if email_sent:
+                print(f"Email sent successfully to {email}")
+                return {
+                    'user_id': user_id,
+                    'email': email,
+                    'month_year': month_year,
+                    'status': 'sent'
+                }
+            else:
+                print(f"Failed to send email to {email}")
+                return {
+                    'user_id': user_id,
+                    'email': email,
+                    'month_year': month_year,
+                    'status': 'failed'
+                }
+        except Exception as e:
+            print(f"Error sending email for user {user_id}: {str(e)}")
+            raise
+
+@celery_app.task(bind=True)
+def process_all_reports(self, month_year):
+    """Process reports for all users"""
+    with app.app_context():
+        try:
+            print(f"Starting report generation for all users for {month_year}")
+            
+            # Get all users
+            users = User.query.all()
+            print(f"Found {len(users)} users")
+            
+            results = []
+            total_users = len(users)
+            
+            for i, user in enumerate(users, 1):
+                try:
+                    print(f"Processing user {user.id} ({user.username}) - {i}/{total_users}")
+                    
+                    # Update task progress
+                    self.update_state(
+                        state='PROGRESS',
+                        meta={
+                            'current': i,
+                            'total': total_users,
+                            'status': f'Processing user {user.username} ({i}/{total_users})'
+                        }
+                    )
+                    
+                    # Generate report
+                    report_result = generate_user_report(user.id, month_year)
+                    
+                    if isinstance(report_result, dict) and report_result.get('html_content'):
+                        # Send email
+                        email_result = send_report_email(user.id, month_year, report_result['html_content'])
+                        results.append({
+                            'user_id': user.id,
+                            'username': user.username,
+                            'report_status': 'generated',
+                            'email_status': email_result.get('status', 'unknown'),
+                            'success': True
+                        })
+                        print(f"✅ Successfully processed user {user.username}")
+                    else:
+                        results.append({
+                            'user_id': user.id,
+                            'username': user.username,
+                            'report_status': 'failed',
+                            'email_status': 'not_attempted',
+                            'success': False,
+                            'error': 'No report content generated'
+                        })
+                        print(f"❌ Failed to generate report for user {user.username}")
+                        
+                except Exception as e:
+                    print(f"Error processing user {user.id}: {str(e)}")
+                    results.append({
+                        'user_id': user.id,
+                        'username': user.username if user else 'unknown',
+                        'report_status': 'error',
+                        'email_status': 'not_attempted',
+                        'success': False,
+                        'error': str(e)
+                    })
+            
+            # Calculate summary
+            successful = sum(1 for r in results if r.get('success', False))
+            failed = len(results) - successful
+            
+            print(f"Completed processing {len(results)} users")
+            print(f"✅ Successful: {successful}")
+            print(f"❌ Failed: {failed}")
+            
+            return {
+                'message': f'Completed report generation for {len(users)} users',
+                'summary': {
+                    'total_users': total_users,
+                    'successful': successful,
+                    'failed': failed,
+                    'success_rate': round((successful / total_users) * 100, 2) if total_users > 0 else 0
+                },
+                'results': results,
+                'month_year': month_year
+            }
+        except Exception as e:
+            print(f"Error processing all reports: {str(e)}")
+            raise
+
+@celery_app.task(bind=True)
+def generate_and_send_user_report(self, user_id, month_year):
+    """Generate and send report for a single user in one task"""
+    with app.app_context():
+        try:
+            print(f"Starting report generation and email for user {user_id} for {month_year}")
+            
+            # Get user details
+            user = User.query.get(user_id)
+            if not user:
+                return {
+                    'user_id': user_id,
+                    'success': False,
+                    'error': 'User not found'
+                }
+            
+            # Generate report
+            html_content = generate_monthly_report_html(user_id, month_year)
+            
+            if not html_content:
+                return {
+                    'user_id': user_id,
+                    'username': user.username,
+                    'success': False,
+                    'error': 'No report content generated'
+                }
+            
+            # Send email
+            email = user.username  # Assuming username is email
+            subject = f"Monthly Quiz Report - {month_year}"
+            email_sent = send_email(email, subject, html_content)
+            
+            if email_sent:
+                print(f"✅ Successfully generated and sent report to {email}")
+                return {
+                    'user_id': user_id,
+                    'username': user.username,
+                    'email': email,
+                    'month_year': month_year,
+                    'success': True,
+                    'status': 'Report generated and email sent successfully'
+                }
+            else:
+                print(f"❌ Report generated but email failed for {email}")
+                return {
+                    'user_id': user_id,
+                    'username': user.username,
+                    'email': email,
+                    'month_year': month_year,
+                    'success': False,
+                    'status': 'Report generated but email sending failed',
+                    'html_content': html_content  # Return HTML content for manual sending
+                }
+                
+        except Exception as e:
+            print(f"Error in generate_and_send_user_report for user {user_id}: {str(e)}")
+            return {
+                'user_id': user_id,
+                'success': False,
+                'error': str(e)
+            } 

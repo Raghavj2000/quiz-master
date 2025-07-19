@@ -104,31 +104,58 @@ def get_subject_top_scores():
     current_user = get_jwt_identity()
     
     # Check if current user is admin
-    if current_user['role'] != 'admin':
+    if current_user.get('role') != 'admin':
         return jsonify({"message": "Access forbidden"}), 403
     
     try:
         # Query to get top scores for each subject using raw SQL for better accuracy
         final_result = db.session.execute(
             db.text("""
+                WITH RankedScores AS (
+                    SELECT 
+                        s.id as subject_id,
+                        s.name as subject_name,
+                        u.id as user_id,
+                        u.username,
+                        u.full_name,
+                        sc.total_scored as top_score,
+                        COALESCE(sc.total_questions, 0) as total_questions,
+                        CASE 
+                            WHEN sc.total_questions IS NULL OR sc.total_questions = 0 THEN 0
+                            ELSE ROUND((sc.total_scored * 100.0) / sc.total_questions, 2)
+                        END as percentage,
+                        ROW_NUMBER() OVER (PARTITION BY s.id ORDER BY sc.total_scored DESC, 
+                            CASE 
+                                WHEN sc.total_questions IS NULL OR sc.total_questions = 0 THEN 0
+                                ELSE ROUND((sc.total_scored * 100.0) / sc.total_questions, 2)
+                            END DESC) as rn
+                    FROM subject s
+                    JOIN chapter c ON s.id = c.subject_id
+                    JOIN quiz q ON c.id = q.chapter_id
+                    JOIN score sc ON q.id = sc.quiz_id
+                    JOIN user u ON sc.user_id = u.id
+                    WHERE sc.total_scored IS NOT NULL
+                )
                 SELECT 
-                    s.id as subject_id,
-                    s.name as subject_name,
-                    u.id as user_id,
-                    u.username,
-                    u.full_name,
-                    sc.total_scored as top_score,
-                    sc.total_questions,
-                    ROUND((sc.total_scored * 100.0) / sc.total_questions, 2) as percentage
-                FROM subject s
-                JOIN chapter c ON s.id = c.subject_id
-                JOIN quiz q ON c.id = q.chapter_id
-                JOIN score sc ON q.id = sc.quiz_id
-                JOIN user u ON sc.user_id = u.id
-                WHERE sc.total_questions > 0
-                ORDER BY s.name, sc.total_scored DESC
+                    subject_id,
+                    subject_name,
+                    user_id,
+                    username,
+                    full_name,
+                    top_score,
+                    total_questions,
+                    percentage
+                FROM RankedScores
+                WHERE rn = 1
+                ORDER BY subject_name
             """)
         ).fetchall()
+        
+        # Debug: Print raw results
+        print("=== DEBUG: Raw SQL Results ===")
+        for row in final_result:
+            print(f"Subject: {row.subject_name}, Score: {row.top_score}, Total Questions: {row.total_questions}, Percentage: {row.percentage}")
+        print("=== END DEBUG ===")
         
         # Process results to get top score per subject
         subject_top_scores = {}
@@ -148,17 +175,23 @@ def get_subject_top_scores():
         
         final_result = list(subject_top_scores.values())
         
+        # Debug: Print processed results
+        print("=== DEBUG: Processed Results ===")
+        for row in final_result:
+            print(f"Subject: {row['subject_name']}, Score: {row['top_score']}, Total Questions: {row['total_questions']}, Percentage: {row['percentage']}")
+        print("=== END DEBUG ===")
+        
         # Format the results
         result = [
             {
-                'subject_id': row.subject_id,
-                'subject_name': row.subject_name,
-                'user_id': row.user_id,
-                'username': row.username,
-                'full_name': row.full_name,
-                'top_score': row.top_score,
-                'total_questions': row.total_questions,
-                'percentage': row.percentage
+                'subject_id': row['subject_id'],
+                'subject_name': row['subject_name'],
+                'user_id': row['user_id'],
+                'username': row['username'],
+                'full_name': row['full_name'],
+                'top_score': row['top_score'],
+                'total_questions': row['total_questions'],
+                'percentage': row['percentage']
             }
             for row in final_result
         ]
@@ -181,7 +214,7 @@ def get_subject_user_attempts():
     current_user = get_jwt_identity()
     
     # Check if current user is admin
-    if current_user['role'] != 'admin':
+    if current_user.get('role') != 'admin':
         return jsonify({"message": "Access forbidden"}), 403
     
     try:

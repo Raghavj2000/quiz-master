@@ -91,7 +91,8 @@ class Score(db.Model):
     total_scored = db.Column(db.Integer)
     total_questions = db.Column(db.Integer)
 
-    user = db.relationship('User', backref='scores')
+    # Define relationship with cascade delete
+    user = db.relationship('User', backref=db.backref('scores', lazy=True, cascade="all, delete-orphan"))
 
     def __repr__(self):
         return f"<Score User {self.user_id} - Quiz {self.quiz_id}>"
