@@ -1,31 +1,34 @@
-import os
-from celery import Celery
+from celery.schedules import crontab
 
-# Celery configuration
-CELERY_BROKER_URL = os.getenv('CELERY_BROKER_URL', 'redis://localhost:6379/0')
-CELERY_RESULT_BACKEND = os.getenv('CELERY_RESULT_BACKEND', 'redis://localhost:6379/0')
+broker_url = "redis://localhost:6379/0"
+result_backend = "redis://localhost:6379/1"
+timezone = "Asia/Kolkata"
+enable_utc = False
+broker_connection_retry_on_startup = True
 
-# Create Celery instance
-celery_app = Celery('quiz_master')
+# Task configuration
+task_serializer = 'json'
+accept_content = ['json']
+result_serializer = 'json'
+task_track_started = True
+task_time_limit = 30 * 60  # 30 minutes
+task_soft_time_limit = 25 * 60  # 25 minutes
 
-# Configure Celery
-celery_app.conf.update(
-    broker_url=CELERY_BROKER_URL,
-    result_backend=CELERY_RESULT_BACKEND,
-    task_serializer='json',
-    accept_content=['json'],
-    result_serializer='json',
-    timezone='UTC',
-    enable_utc=True,
-    task_track_started=True,
-    task_time_limit=30 * 60,  # 30 minutes
-    task_soft_time_limit=25 * 60,  # 25 minutes
-    worker_prefetch_multiplier=1,
-    worker_max_tasks_per_child=1000,
-    # Windows-specific settings to avoid multiprocessing issues
-    worker_pool='solo',  # Use solo pool instead of prefork for Windows
-    worker_concurrency=1,  # Single worker process
-)
+# Worker configuration
+worker_prefetch_multiplier = 1
+worker_max_tasks_per_child = 1000
+worker_pool = 'solo'  # For Windows
+worker_concurrency = 1  # Single worker process
 
-# Import tasks directly
-import celery_tasks
+# Beat schedule configuration
+beat_schedule = {
+    'daily-quiz-reminders': {
+        'task': 'celery_tasks.send_daily_quiz_reminders',
+        'schedule': crontab(hour=21, minute=51),  # 9:51 PM
+        'options': {'expires': 3600}
+    },
+}
+
+# Beat configuration
+beat_schedule_filename = 'celerybeat-schedule'
+beat_sync_every = 1

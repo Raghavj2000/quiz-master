@@ -1,4 +1,4 @@
-from celery_config import celery_app
+from celery import shared_task
 from models import db, User
 from datetime import datetime
 import uuid
@@ -9,7 +9,9 @@ from email.mime.multipart import MIMEMultipart
 from flask import render_template_string
 from sqlalchemy import func, desc
 from datetime import timedelta
-from app import app  # Import the Flask app
+
+# Import export tasks to ensure they're registered
+import export_tasks
 
 # Email configuration
 SMTP_SERVER = os.getenv('SMTP_SERVER', 'smtp.gmail.com')
@@ -268,9 +270,18 @@ def generate_monthly_report_html(user_id, month_year):
                                 quiz_rankings=quiz_rankings,
                                 datetime=datetime)
 
-@celery_app.task(bind=True)
+@shared_task(bind=True)
 def generate_user_report(self, user_id, month_year):
     """Generate monthly report for a specific user"""
+    # Create a minimal Flask app context
+    from flask import Flask
+    from config import Config
+    from models import db
+    
+    app = Flask(__name__)
+    app.config.from_object(Config)
+    db.init_app(app)
+    
     with app.app_context():
         try:
             print(f"Generating report for user {user_id} for {month_year}")
@@ -293,9 +304,18 @@ def generate_user_report(self, user_id, month_year):
             print(f"Error generating report for user {user_id}: {str(e)}")
             raise
 
-@celery_app.task(bind=True)
+@shared_task(bind=True)
 def send_report_email(self, user_id, month_year, html_content):
     """Send email with report for a specific user"""
+    # Create a minimal Flask app context
+    from flask import Flask
+    from config import Config
+    from models import db
+    
+    app = Flask(__name__)
+    app.config.from_object(Config)
+    db.init_app(app)
+    
     with app.app_context():
         try:
             print(f"Sending email for user {user_id} for {month_year}")
@@ -332,9 +352,18 @@ def send_report_email(self, user_id, month_year, html_content):
             print(f"Error sending email for user {user_id}: {str(e)}")
             raise
 
-@celery_app.task(bind=True)
+@shared_task(bind=True)
 def process_all_reports(self, month_year):
     """Process reports for all users"""
+    # Create a minimal Flask app context
+    from flask import Flask
+    from config import Config
+    from models import db
+    
+    app = Flask(__name__)
+    app.config.from_object(Config)
+    db.init_app(app)
+    
     with app.app_context():
         try:
             print(f"Starting report generation for all users for {month_year}")
@@ -419,9 +448,18 @@ def process_all_reports(self, month_year):
             print(f"Error processing all reports: {str(e)}")
             raise
 
-@celery_app.task(bind=True)
+@shared_task(bind=True)
 def generate_and_send_user_report(self, user_id, month_year):
     """Generate and send report for a single user in one task"""
+    # Create a minimal Flask app context
+    from flask import Flask
+    from config import Config
+    from models import db
+    
+    app = Flask(__name__)
+    app.config.from_object(Config)
+    db.init_app(app)
+    
     with app.app_context():
         try:
             print(f"Starting report generation and email for user {user_id} for {month_year}")
@@ -479,4 +517,110 @@ def generate_and_send_user_report(self, user_id, month_year):
                 'user_id': user_id,
                 'success': False,
                 'error': str(e)
-            } 
+            }
+
+
+
+@shared_task(bind=True)
+def send_daily_quiz_reminders(self):
+    """Send daily reminders about new quizzes to users"""
+    try:
+        print("Starting daily quiz reminders...")
+        
+        # Get today's date
+        today = datetime.now().date()
+        start_of_day = datetime.combine(today, datetime.min.time())
+        end_of_day = datetime.combine(today, datetime.max.time())
+        
+        # Find quizzes created today
+        from models import Quiz, Chapter, Subject
+        
+        new_quizzes = db.session.query(
+            Quiz.id,
+            Quiz.name,
+            Chapter.name.label('chapter_name'),
+            Subject.name.label('subject_name')
+        ).join(
+            Chapter, Quiz.chapter_id == Chapter.id
+        ).join(
+            Subject, Chapter.subject_id == Subject.id
+        ).filter(
+            Quiz.created_at >= start_of_day,
+            Quiz.created_at <= end_of_day
+        ).all()
+        
+        if not new_quizzes:
+            print("No new quizzes found today")
+            return {
+                'status': 'SUCCESS',
+                'message': 'No new quizzes found today',
+                'quizzes_count': 0
+            }
+        
+        print(f"Found {len(new_quizzes)} new quizzes today")
+        
+        # Get all users (excluding admins)
+        users = User.query.filter(User.role != 'admin').all()
+        
+        # Prepare reminder message
+        quiz_list = "\n".join([
+            f"• {quiz.name} ({quiz.subject_name} - {quiz.chapter_name})"
+            for quiz in new_quizzes
+        ])
+        
+        reminder_message = f"""🎯 Daily Quiz Reminder
+
+Good evening! {len(new_quizzes)} new quiz{'s' if len(new_quizzes) > 1 else ''} {'have' if len(new_quizzes) > 1 else 'has'} been added today:
+
+{quiz_list}
+
+📚 Don't forget to:
+• Visit the quiz platform
+• Attempt the new quizzes
+• Track your progress
+• Stay ahead in your studies!
+
+Best regards,
+Quiz Master Team"""
+        
+        # Send reminders
+        success_count = 0
+        failure_count = 0
+        
+        for user in users:
+            try:
+                email = user.username
+                subject = f"Daily Quiz Reminder - {len(new_quizzes)} New Quiz{'s' if len(new_quizzes) > 1 else ''} Available"
+                
+                email_sent = send_email(email, subject, reminder_message)
+                
+                if email_sent:
+                    success_count += 1
+                    print(f"✅ Reminder sent to {user.username}")
+                else:
+                    failure_count += 1
+                    print(f"❌ Failed to send reminder to {user.username}")
+                    
+            except Exception as e:
+                failure_count += 1
+                print(f"❌ Error sending reminder to {user.username}: {str(e)}")
+        
+        print(f"Daily reminders completed: {success_count} successful, {failure_count} failed")
+        
+        return {
+            'status': 'SUCCESS',
+            'message': f'Daily reminders sent to {len(users)} users',
+            'quizzes_count': len(new_quizzes),
+            'success_count': success_count,
+            'failure_count': failure_count,
+            'total_users': len(users)
+        }
+        
+    except Exception as e:
+        print(f"Error in daily quiz reminders: {str(e)}")
+        return {
+            'status': 'FAILURE',
+            'error': str(e),
+            'message': 'Daily reminders failed'
+        } 
+        

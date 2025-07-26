@@ -45,6 +45,7 @@
           <div class="quiz-meta">
             <p v-if="quiz.time_duration">Duration: {{ quiz?.time_duration }} minutes</p>
             <p v-if="quiz.date_of_quiz">Date: {{ new Date(quiz.date_of_quiz).toLocaleDateString() }}</p>
+            <p v-if="quiz.created_at">Created: {{ new Date(quiz.created_at).toLocaleString() }}</p>
           </div>
         </div>
       </div>

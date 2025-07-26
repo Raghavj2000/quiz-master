@@ -62,6 +62,7 @@ class Quiz(db.Model):
     date_of_quiz = db.Column(db.DateTime)
     time_duration = db.Column(db.Time)
     remarks = db.Column(db.Text)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     questions = db.relationship('Question', backref='quiz', lazy=True, cascade="all, delete-orphan")
     scores = db.relationship('Score', backref='quiz', lazy=True, cascade="all, delete-orphan")

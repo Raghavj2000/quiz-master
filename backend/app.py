@@ -10,32 +10,31 @@ from question_routes import question_bp
 from score_routes import score_bp
 from summary_routes import summary_bp
 from scheduled_jobs_routes import scheduled_jobs_bp
+from export_routes import export_bp
 from flask_migrate import Migrate
 from flask_cors import CORS, cross_origin
-from celery_config import celery_app
+from celery_init import celery_init_app
+from celery.schedules import crontab
 
-app = Flask(__name__)
-cors = CORS(app) # allow CORS for all domains on all routes.
-app.config.from_object(Config)
+app = None
 
-# Initialize extensions
-db.init_app(app)
-jwt = JWTManager(app)  # ✅ Initialize JWT here
-bcrypt.init_app(app)
-jwt.init_app(app)
+def create_app():
+    app = Flask(__name__)
+    app.config.from_object(Config)
+    db.init_app(app)
+    jwt = JWTManager(app)
+    bcrypt.init_app(app)
+    jwt.init_app(app)
+    migrate = Migrate(app, db)
+    cors = CORS(app)
+    app.app_context().push()
+    return app
 
-migrate = Migrate(app, db)
+app = create_app()
+celery = celery_init_app(app)
+celery.autodiscover_tasks()
 
-# Configure Celery
-celery_app.conf.update(broker_url=app.config.get('CELERY_BROKER_URL', 'redis://localhost:6379/0'))
 
-# Make Celery work with Flask context
-class ContextTask(celery_app.Task):
-    def __call__(self, *args, **kwargs):
-        with app.app_context():
-            return self.run(*args, **kwargs)
-
-celery_app.Task = ContextTask
 
 # Register API routes
 app.register_blueprint(api)
@@ -46,6 +45,7 @@ app.register_blueprint(question_bp)
 app.register_blueprint(score_bp)
 app.register_blueprint(summary_bp)
 app.register_blueprint(scheduled_jobs_bp)
+app.register_blueprint(export_bp)
 
 with app.app_context():
     db.create_all()

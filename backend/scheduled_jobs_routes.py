@@ -316,6 +316,61 @@ def generate_monthly_report():
     except Exception as e:
         return jsonify({'error': f'Error generating report: {str(e)}'}), 400
 
+@scheduled_jobs_bp.route('/scheduled/trigger-daily-reminders', methods=['POST'])
+@jwt_required()
+def trigger_daily_reminders():
+    """
+    Manually trigger daily quiz reminders (for testing)
+    """
+    current_user = get_jwt_identity()
+    
+    # Check if current user is admin
+    if current_user.get('role') != 'admin':
+        return jsonify({"message": "Access forbidden"}), 403
+    
+    try:
+        from celery_tasks import send_daily_quiz_reminders
+        
+        # Submit the task
+        task = send_daily_quiz_reminders.delay()
+        
+        return jsonify({
+            'message': 'Daily reminders task triggered successfully',
+            'task_id': task.id,
+            'status': 'PENDING'
+        }), 202
+        
+    except Exception as e:
+        return jsonify({'error': f'Error triggering daily reminders: {str(e)}'}), 400
+
+@scheduled_jobs_bp.route('/scheduled/test-reminder', methods=['POST'])
+@jwt_required()
+def test_reminder():
+    """
+    Test reminder functionality immediately (for testing)
+    """
+    current_user = get_jwt_identity()
+    
+    # Check if current user is admin
+    if current_user.get('role') != 'admin':
+        return jsonify({"message": "Access forbidden"}), 403
+    
+    try:
+        from celery_tasks import send_daily_quiz_reminders
+        
+        # Submit the task
+        task = send_daily_quiz_reminders.delay()
+        
+        return jsonify({
+            'message': 'Test reminder triggered successfully',
+            'task_id': task.id,
+            'status': 'PENDING',
+            'note': 'This will send reminders for any quizzes created today'
+        }), 202
+        
+    except Exception as e:
+        return jsonify({'error': f'Error triggering test reminder: {str(e)}'}), 400
+
 @scheduled_jobs_bp.route('/scheduled/generate-all-monthly-reports', methods=['POST'])
 @jwt_required()
 def generate_all_monthly_reports():
@@ -446,9 +501,9 @@ def get_task_status(task_id):
         return jsonify({"message": "Access forbidden"}), 403
     
     try:
-        from celery_tasks import celery_app
+        from app import celery
         
-        task = celery_app.AsyncResult(task_id)
+        task = celery.AsyncResult(task_id)
         
         if task.state == 'PENDING':
             response = {
@@ -490,10 +545,10 @@ def get_report_summary():
         return jsonify({"message": "Access forbidden"}), 403
     
     try:
-        from celery_tasks import celery_app
+        from app import celery
         
         # Get recent tasks (last 10)
-        inspector = celery_app.control.inspect()
+        inspector = celery.control.inspect()
         active_tasks = inspector.active() or {}
         reserved_tasks = inspector.reserved() or {}
         

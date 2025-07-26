@@ -108,6 +108,7 @@ def get_all_quizzes():
                 'date_of_quiz': q.date_of_quiz.isoformat() if q.date_of_quiz else None,
                 'time_duration': (q.time_duration.hour * 60 + q.time_duration.minute) if q.time_duration else None,
                 'remarks': q.remarks,
+                'created_at': q.created_at.isoformat() if q.created_at else None,
                 'questions': [
                     {
                         'id': qu.id,
@@ -140,7 +141,8 @@ def get_quizzes_by_chapter(chapter_id):
                 'id': q.id,
                 'date_of_quiz': q.date_of_quiz,
                 'time_duration': (q.time_duration.hour * 60 + q.time_duration.minute) if q.time_duration else None,
-                'remarks': q.remarks
+                'remarks': q.remarks,
+                'created_at': q.created_at.isoformat() if q.created_at else None
             } for q in quizzes
         ]
         return jsonify(result), 200
