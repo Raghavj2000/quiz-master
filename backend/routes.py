@@ -47,10 +47,7 @@ def logi():
 @api.route('/admin', methods=['GET'])
 @jwt_required()
 def admin_only():
-    token = request.headers.get("Authorization").split()[1]  # Get the actual token
-    print(token)
     current_user = get_jwt_identity()
-    print(current_user)
     
     if current_user['role'] != 'admin':
         return jsonify({"message": "Access forbidden"}), 403
@@ -61,7 +58,6 @@ def admin_only():
 @api.route('/admin/users', methods=['GET'])
 @jwt_required()
 def get_all_users():
-    token = request.headers.get("Authorization").split()[1]  # Get the actual token
     current_user = get_jwt_identity()
     
     if current_user['role'] != 'admin':

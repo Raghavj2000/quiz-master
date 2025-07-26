@@ -5,11 +5,9 @@ from flask_jwt_extended import jwt_required, get_jwt_identity
 
 chapter_bp = Blueprint('chapter_bp', __name__)
 
-# Create Chapter
 @chapter_bp.route('/chapter', methods=['POST'])
 @jwt_required()
 def create_chapter():
-    token = request.headers.get("Authorization").split()[1]  # Get the actual token
     current_user = get_jwt_identity()
     
     if current_user['role'] != 'admin':
@@ -31,11 +29,9 @@ def create_chapter():
     except:
         return jsonify({'error': 'Error creating a chapter'}), 400
 
-# Edit Chapter
 @chapter_bp.route('/chapter/<int:chapter_id>', methods=['POST'])
 @jwt_required()
 def update_chapter(chapter_id):
-    token = request.headers.get("Authorization").split()[1]  # Get the actual token
     current_user = get_jwt_identity()
     
     if current_user['role'] != 'admin':
@@ -54,11 +50,9 @@ def update_chapter(chapter_id):
     except:
         return jsonify({'message': 'Error in updating chapter'}), 400
 
-# Delete Chapter
 @chapter_bp.route('/chapter/<int:chapter_id>', methods=['DELETE'])
 @jwt_required()
 def delete_chapter(chapter_id):
-    token = request.headers.get("Authorization").split()[1]  # Get the actual token
     current_user = get_jwt_identity()
     
     if current_user['role'] != 'admin':

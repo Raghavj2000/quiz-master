@@ -32,7 +32,7 @@ def create_app():
 
 app = create_app()
 celery = celery_init_app(app)
-celery.autodiscover_tasks()
+celery.autodiscover_tasks(['celery_tasks', 'export_tasks'])
 
 
 
@@ -49,6 +49,10 @@ app.register_blueprint(export_bp)
 
 with app.app_context():
     db.create_all()
+
+# Import tasks to ensure they're registered
+import celery_tasks
+import export_tasks
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000, debug=True)

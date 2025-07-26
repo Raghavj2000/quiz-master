@@ -8,15 +8,10 @@ summary_bp = Blueprint('summary_bp', __name__)
 @summary_bp.route('/summary/user/<int:user_id>/subject-quizzes', methods=['GET'])
 @jwt_required()
 def get_user_subject_quiz_summary(user_id):
-    """
-    Get the number of quizzes taken for each subject by a specific user
-    Returns: List of subjects with quiz counts
-    """
+
     current_user = get_jwt_identity()
     
     try:
-        # Query to get subject-wise quiz counts for the user
-        # Join Score -> Quiz -> Chapter -> Subject to get all necessary information
         subject_summary = db.session.query(
             Subject.id.label('subject_id'),
             Subject.name.label('subject_name'),
@@ -33,7 +28,6 @@ def get_user_subject_quiz_summary(user_id):
             Subject.id, Subject.name
         ).all()
         
-        # Format the results
         result = [
             {
                 'subject_id': row.subject_id,
@@ -55,14 +49,9 @@ def get_user_subject_quiz_summary(user_id):
 @summary_bp.route('/summary/user/<int:user_id>/monthly-quizzes', methods=['GET'])
 @jwt_required()
 def get_user_monthly_quiz_summary(user_id):
-    """
-    Get the number of quizzes taken for each month by a specific user
-    Returns: List of months with quiz counts
-    """
     current_user = get_jwt_identity()
     
     try:
-        # Query to get monthly quiz counts for the user using raw SQL for better date handling
         monthly_summary = db.session.execute(
             db.text("""
                 SELECT 
@@ -76,7 +65,6 @@ def get_user_monthly_quiz_summary(user_id):
             {'user_id': user_id}
         ).fetchall()
         
-        # Format the results
         result = [
             {
                 'month': row.month,
@@ -97,18 +85,12 @@ def get_user_monthly_quiz_summary(user_id):
 @summary_bp.route('/summary/admin/subject-top-scores', methods=['GET'])
 @jwt_required()
 def get_subject_top_scores():
-    """
-    Get the top scores for each subject (Admin only)
-    Returns: List of subjects with top scores and user details
-    """
     current_user = get_jwt_identity()
     
-    # Check if current user is admin
     if current_user.get('role') != 'admin':
         return jsonify({"message": "Access forbidden"}), 403
     
     try:
-        # Query to get top scores for each subject using raw SQL for better accuracy
         final_result = db.session.execute(
             db.text("""
                 WITH RankedScores AS (
@@ -151,13 +133,6 @@ def get_subject_top_scores():
             """)
         ).fetchall()
         
-        # Debug: Print raw results
-        print("=== DEBUG: Raw SQL Results ===")
-        for row in final_result:
-            print(f"Subject: {row.subject_name}, Score: {row.top_score}, Total Questions: {row.total_questions}, Percentage: {row.percentage}")
-        print("=== END DEBUG ===")
-        
-        # Process results to get top score per subject
         subject_top_scores = {}
         for row in final_result:
             subject_id = row.subject_id
@@ -175,13 +150,6 @@ def get_subject_top_scores():
         
         final_result = list(subject_top_scores.values())
         
-        # Debug: Print processed results
-        print("=== DEBUG: Processed Results ===")
-        for row in final_result:
-            print(f"Subject: {row['subject_name']}, Score: {row['top_score']}, Total Questions: {row['total_questions']}, Percentage: {row['percentage']}")
-        print("=== END DEBUG ===")
-        
-        # Format the results
         result = [
             {
                 'subject_id': row['subject_id'],
@@ -207,18 +175,12 @@ def get_subject_top_scores():
 @summary_bp.route('/summary/admin/subject-user-attempts', methods=['GET'])
 @jwt_required()
 def get_subject_user_attempts():
-    """
-    Get the number of unique users who attempted quizzes for each subject (Admin only)
-    Returns: List of subjects with user attempt counts
-    """
     current_user = get_jwt_identity()
     
-    # Check if current user is admin
     if current_user.get('role') != 'admin':
         return jsonify({"message": "Access forbidden"}), 403
     
     try:
-        # Query to get unique user counts for each subject
         subject_user_counts = db.session.query(
             Subject.id.label('subject_id'),
             Subject.name.label('subject_name'),
@@ -235,7 +197,6 @@ def get_subject_user_attempts():
             Subject.name
         ).all()
         
-        # Format the results
         result = [
             {
                 'subject_id': row.subject_id,

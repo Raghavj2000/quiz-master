@@ -24,8 +24,14 @@ worker_concurrency = 1  # Single worker process
 beat_schedule = {
     'daily-quiz-reminders': {
         'task': 'celery_tasks.send_daily_quiz_reminders',
-        'schedule': crontab(hour=21, minute=51),  # 9:51 PM
+        'schedule': crontab(hour=21, minute=51),  # 9:51 PM daily
         'options': {'expires': 3600}
+    },
+    'monthly-report-generation': {
+        'task': 'celery_tasks.process_all_reports',
+        'schedule': crontab(day_of_month=26, hour=18, minute=3),  # 1st day of every month at 8:00 AM
+        'args': (),  # No arguments - will auto-detect previous month
+        'options': {'expires': 3600 * 24}  # 24 hours expiry
     },
 }
 

@@ -56,10 +56,15 @@ def send_email(to_email, subject, html_content):
 def generate_monthly_report_html(user_id, month_year):
     """Generate HTML content for monthly report"""
     
+    print(f"🔍 generate_monthly_report_html called for user_id: {user_id}, month_year: {month_year}")
+    
     # Get user details
     user = User.query.get(user_id)
     if not user:
+        print(f"❌ User {user_id} not found")
         return None
+    
+    print(f"✅ User found: {user.username}")
     
     # Parse month_year (format: "2024-01")
     try:
@@ -102,6 +107,10 @@ def generate_monthly_report_html(user_id, month_year):
     total_questions = sum(score.total_questions or 0 for score in monthly_scores)
     total_scored = sum(score.total_scored or 0 for score in monthly_scores)
     average_score = round((total_scored / total_questions * 100), 2) if total_questions > 0 else 0
+    
+    print(f"📊 Found {total_quizzes} quizzes for user {user_id} in {month_year}")
+    print(f"📊 Date range: {start_date} to {end_date}")
+    print(f"📊 Total questions: {total_questions}, Total scored: {total_scored}")
     
     # Get subject-wise breakdown
     subject_stats = {}
@@ -273,251 +282,220 @@ def generate_monthly_report_html(user_id, month_year):
 @shared_task(bind=True)
 def generate_user_report(self, user_id, month_year):
     """Generate monthly report for a specific user"""
-    # Create a minimal Flask app context
-    from flask import Flask
-    from config import Config
-    from models import db
-    
-    app = Flask(__name__)
-    app.config.from_object(Config)
-    db.init_app(app)
-    
-    with app.app_context():
-        try:
-            print(f"Generating report for user {user_id} for {month_year}")
-            
-            # Generate HTML report
-            html_content = generate_monthly_report_html(user_id, month_year)
-            
-            if not html_content:
-                print(f"No report content generated for user {user_id}")
-                return f"No report generated for user {user_id}"
-            
-            print(f"Report generated successfully for user {user_id}")
-            return {
-                'user_id': user_id,
-                'month_year': month_year,
-                'html_content': html_content,
-                'status': 'generated'
-            }
-        except Exception as e:
-            print(f"Error generating report for user {user_id}: {str(e)}")
-            raise
+    try:
+        print(f"Generating report for user {user_id} for {month_year}")
+        
+        # Generate HTML report
+        html_content = generate_monthly_report_html(user_id, month_year)
+        
+        if not html_content:
+            print(f"No report content generated for user {user_id}")
+            return f"No report generated for user {user_id}"
+        
+        print(f"Report generated successfully for user {user_id}")
+        return {
+            'user_id': user_id,
+            'month_year': month_year,
+            'html_content': html_content,
+            'status': 'generated'
+        }
+    except Exception as e:
+        print(f"Error generating report for user {user_id}: {str(e)}")
+        raise
 
 @shared_task(bind=True)
 def send_report_email(self, user_id, month_year, html_content):
     """Send email with report for a specific user"""
-    # Create a minimal Flask app context
-    from flask import Flask
-    from config import Config
-    from models import db
-    
-    app = Flask(__name__)
-    app.config.from_object(Config)
-    db.init_app(app)
-    
-    with app.app_context():
-        try:
-            print(f"Sending email for user {user_id} for {month_year}")
-            
-            # Get user email
-            user = User.query.get(user_id)
-            if not user:
-                print(f"User {user_id} not found")
-                return f"User {user_id} not found"
-            
-            email = user.username  # Assuming username is email
-            subject = f"Monthly Quiz Report - {month_year}"
-            
-            # Send email
-            email_sent = send_email(email, subject, html_content)
-            
-            if email_sent:
-                print(f"Email sent successfully to {email}")
-                return {
-                    'user_id': user_id,
-                    'email': email,
-                    'month_year': month_year,
-                    'status': 'sent'
-                }
-            else:
-                print(f"Failed to send email to {email}")
-                return {
-                    'user_id': user_id,
-                    'email': email,
-                    'month_year': month_year,
-                    'status': 'failed'
-                }
-        except Exception as e:
-            print(f"Error sending email for user {user_id}: {str(e)}")
-            raise
+    try:
+        print(f"Sending email for user {user_id} for {month_year}")
+        
+        # Get user email
+        user = User.query.get(user_id)
+        if not user:
+            print(f"User {user_id} not found")
+            return f"User {user_id} not found"
+        
+        email = user.username  # Assuming username is email
+        subject = f"Monthly Quiz Report - {month_year}"
+        
+        # Send email
+        email_sent = send_email(email, subject, html_content)
+        
+        if email_sent:
+            print(f"Email sent successfully to {email}")
+            return {
+                'user_id': user_id,
+                'email': email,
+                'month_year': month_year,
+                'status': 'sent'
+            }
+        else:
+            print(f"Failed to send email to {email}")
+            return {
+                'user_id': user_id,
+                'email': email,
+                'month_year': month_year,
+                'status': 'failed'
+            }
+    except Exception as e:
+        print(f"Error sending email for user {user_id}: {str(e)}")
+        raise
 
 @shared_task(bind=True)
-def process_all_reports(self, month_year):
+def process_all_reports(self, month_year=None):
     """Process reports for all users"""
-    # Create a minimal Flask app context
-    from flask import Flask
-    from config import Config
-    from models import db
-    
-    app = Flask(__name__)
-    app.config.from_object(Config)
-    db.init_app(app)
-    
-    with app.app_context():
-        try:
-            print(f"Starting report generation for all users for {month_year}")
+    try:
+        # If month_year is not provided (called from scheduler), use current month
+        if month_year is None:
+            today = datetime.now()
+            current_month = today.month
+            current_year = today.year
             
-            # Get all users
-            users = User.query.all()
-            print(f"Found {len(users)} users")
-            
-            results = []
-            total_users = len(users)
-            
-            for i, user in enumerate(users, 1):
-                try:
-                    print(f"Processing user {user.id} ({user.username}) - {i}/{total_users}")
-                    
-                    # Update task progress
-                    self.update_state(
-                        state='PROGRESS',
-                        meta={
-                            'current': i,
-                            'total': total_users,
-                            'status': f'Processing user {user.username} ({i}/{total_users})'
-                        }
-                    )
-                    
-                    # Generate report
-                    report_result = generate_user_report(user.id, month_year)
-                    
-                    if isinstance(report_result, dict) and report_result.get('html_content'):
-                        # Send email
-                        email_result = send_report_email(user.id, month_year, report_result['html_content'])
-                        results.append({
-                            'user_id': user.id,
-                            'username': user.username,
-                            'report_status': 'generated',
-                            'email_status': email_result.get('status', 'unknown'),
-                            'success': True
-                        })
-                        print(f"✅ Successfully processed user {user.username}")
-                    else:
-                        results.append({
-                            'user_id': user.id,
-                            'username': user.username,
-                            'report_status': 'failed',
-                            'email_status': 'not_attempted',
-                            'success': False,
-                            'error': 'No report content generated'
-                        })
-                        print(f"❌ Failed to generate report for user {user.username}")
-                        
-                except Exception as e:
-                    print(f"Error processing user {user.id}: {str(e)}")
+            month_year = f"{current_year}-{current_month:02d}"
+            print(f"Auto-detected month_year: {month_year} (current month)")
+        
+        print(f"Starting report generation for all users for {month_year}")
+        
+        # Get all users
+        users = User.query.all()
+        print(f"Found {len(users)} users")
+        
+        results = []
+        total_users = len(users)
+        
+        for i, user in enumerate(users, 1):
+            try:
+                print(f"Processing user {user.id} ({user.username}) - {i}/{total_users}")
+                
+                # Update task progress
+                self.update_state(
+                    state='PROGRESS',
+                    meta={
+                        'current': i,
+                        'total': total_users,
+                        'status': f'Processing user {user.username} ({i}/{total_users})'
+                    }
+                )
+                
+                # Generate report
+                report_result = generate_user_report(user.id, month_year)
+                
+                if isinstance(report_result, dict) and report_result.get('html_content'):
+                    # Send email
+                    email_result = send_report_email(user.id, month_year, report_result['html_content'])
                     results.append({
                         'user_id': user.id,
-                        'username': user.username if user else 'unknown',
-                        'report_status': 'error',
+                        'username': user.username,
+                        'report_status': 'generated',
+                        'email_status': email_result.get('status', 'unknown'),
+                        'success': True
+                    })
+                    print(f"✅ Successfully processed user {user.username}")
+                else:
+                    results.append({
+                        'user_id': user.id,
+                        'username': user.username,
+                        'report_status': 'failed',
                         'email_status': 'not_attempted',
                         'success': False,
-                        'error': str(e)
+                        'error': 'No report content generated'
                     })
-            
-            # Calculate summary
-            successful = sum(1 for r in results if r.get('success', False))
-            failed = len(results) - successful
-            
-            print(f"Completed processing {len(results)} users")
-            print(f"✅ Successful: {successful}")
-            print(f"❌ Failed: {failed}")
-            
-            return {
-                'message': f'Completed report generation for {len(users)} users',
-                'summary': {
-                    'total_users': total_users,
-                    'successful': successful,
-                    'failed': failed,
-                    'success_rate': round((successful / total_users) * 100, 2) if total_users > 0 else 0
-                },
-                'results': results,
-                'month_year': month_year
-            }
-        except Exception as e:
-            print(f"Error processing all reports: {str(e)}")
-            raise
+                    print(f"❌ Failed to generate report for user {user.username}")
+                    
+            except Exception as e:
+                print(f"Error processing user {user.id}: {str(e)}")
+                results.append({
+                    'user_id': user.id,
+                    'username': user.username if user else 'unknown',
+                    'report_status': 'error',
+                    'email_status': 'not_attempted',
+                    'success': False,
+                    'error': str(e)
+                })
+        
+        # Calculate summary
+        successful = sum(1 for r in results if r.get('success', False))
+        failed = len(results) - successful
+        
+        print(f"Completed processing {len(results)} users")
+        print(f"✅ Successful: {successful}")
+        print(f"❌ Failed: {failed}")
+        
+        return {
+            'message': f'Completed report generation for {len(users)} users',
+            'summary': {
+                'total_users': total_users,
+                'successful': successful,
+                'failed': failed,
+                'success_rate': round((successful / total_users) * 100, 2) if total_users > 0 else 0
+            },
+            'results': results,
+            'month_year': month_year
+        }
+    except Exception as e:
+        print(f"Error processing all reports: {str(e)}")
+        raise
 
 @shared_task(bind=True)
 def generate_and_send_user_report(self, user_id, month_year):
     """Generate and send report for a single user in one task"""
-    # Create a minimal Flask app context
-    from flask import Flask
-    from config import Config
-    from models import db
-    
-    app = Flask(__name__)
-    app.config.from_object(Config)
-    db.init_app(app)
-    
-    with app.app_context():
-        try:
-            print(f"Starting report generation and email for user {user_id} for {month_year}")
-            
-            # Get user details
-            user = User.query.get(user_id)
-            if not user:
-                return {
-                    'user_id': user_id,
-                    'success': False,
-                    'error': 'User not found'
-                }
-            
-            # Generate report
-            html_content = generate_monthly_report_html(user_id, month_year)
-            
-            if not html_content:
-                return {
-                    'user_id': user_id,
-                    'username': user.username,
-                    'success': False,
-                    'error': 'No report content generated'
-                }
-            
-            # Send email
-            email = user.username  # Assuming username is email
-            subject = f"Monthly Quiz Report - {month_year}"
-            email_sent = send_email(email, subject, html_content)
-            
-            if email_sent:
-                print(f"✅ Successfully generated and sent report to {email}")
-                return {
-                    'user_id': user_id,
-                    'username': user.username,
-                    'email': email,
-                    'month_year': month_year,
-                    'success': True,
-                    'status': 'Report generated and email sent successfully'
-                }
-            else:
-                print(f"❌ Report generated but email failed for {email}")
-                return {
-                    'user_id': user_id,
-                    'username': user.username,
-                    'email': email,
-                    'month_year': month_year,
-                    'success': False,
-                    'status': 'Report generated but email sending failed',
-                    'html_content': html_content  # Return HTML content for manual sending
-                }
-                
-        except Exception as e:
-            print(f"Error in generate_and_send_user_report for user {user_id}: {str(e)}")
+    try:
+        print(f"Starting report generation and email for user {user_id} for {month_year}")
+        
+        # Get user details
+        user = User.query.get(user_id)
+        if not user:
             return {
                 'user_id': user_id,
                 'success': False,
-                'error': str(e)
+                'error': 'User not found'
             }
+        
+        # Generate report
+        html_content = generate_monthly_report_html(user_id, month_year)
+        
+        if not html_content:
+            return {
+                'user_id': user_id,
+                'username': user.username,
+                'success': False,
+                'error': 'No report content generated'
+            }
+        
+        # Send email
+        email = user.username  # Assuming username is email
+        subject = f"Monthly Quiz Report - {month_year}"
+        email_sent = send_email(email, subject, html_content)
+        
+        if email_sent:
+            print(f"✅ Successfully generated and sent report to {email}")
+            return {
+                'user_id': user_id,
+                'username': user.username,
+                'email': email,
+                'month_year': month_year,
+                'success': True,
+                'status': 'Report generated and email sent successfully'
+            }
+        else:
+            print(f"❌ Report generated but email failed for {email}")
+            return {
+                'user_id': user_id,
+                'username': user.username,
+                'email': email,
+                'month_year': month_year,
+                'success': False,
+                'status': 'Report generated but email sending failed',
+                'html_content': html_content  # Return HTML content for manual sending
+            }
+            
+    except Exception as e:
+        print(f"Error in generate_and_send_user_report for user {user_id}: {str(e)}")
+        return {
+            'user_id': user_id,
+            'success': False,
+            'error': str(e)
+        }
 
 
 
@@ -573,12 +551,6 @@ def send_daily_quiz_reminders(self):
 Good evening! {len(new_quizzes)} new quiz{'s' if len(new_quizzes) > 1 else ''} {'have' if len(new_quizzes) > 1 else 'has'} been added today:
 
 {quiz_list}
-
-📚 Don't forget to:
-• Visit the quiz platform
-• Attempt the new quizzes
-• Track your progress
-• Stay ahead in your studies!
 
 Best regards,
 Quiz Master Team"""

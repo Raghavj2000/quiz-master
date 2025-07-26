@@ -9,7 +9,3 @@ class Config:
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     JWT_VERIFY_SUB = False
     CORS_HEADERS = "Content-Type"
-    
-    # Daily reminder configuration
-    DAILY_REMINDER_HOUR = 21  # or whatever hour it is now
-    DAILY_REMINDER_MINUTE = 51  # or 2 minutes from current minute
